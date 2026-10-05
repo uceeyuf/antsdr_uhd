@@ -24,6 +24,7 @@ localparam RB32_CORE_MISC   = 16;
 localparam RB32_CORE_STATUS = 20;
 localparam RB32_CORE_PLL    = 24;
 
+localparam SR_LOOPBACK     = 6;
 localparam SR_SPI          = 8;
 localparam SR_ATR          = 12;
 localparam SR_TEST         = 21;

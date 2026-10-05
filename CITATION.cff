@@ -1,0 +1,12 @@
+cff-version: 1.2.0
+message: "If you use this fork's original ANTSDR E310 port, please cite it as below."
+type: software
+title: "UHD on the Original ANTSDR E310 Micro-USB"
+authors:
+  - family-names: Yu
+    given-names: Yijie
+    alias: uceeyuf
+    website: "https://github.com/uceeyuf"
+repository-code: "https://github.com/uceeyuf/antsdr_uhd"
+url: "https://github.com/uceeyuf/antsdr_uhd/tree/e310-vivado-2020.2"
+abstract: "Experimental Vivado 2020.2 port for the original ANTSDR E310 Micro-USB, with UHD digital loopback and srsRAN RF API tests. Upstream projects retain their attribution and licenses."

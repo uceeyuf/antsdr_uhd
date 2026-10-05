@@ -130,6 +130,7 @@ module eth_interface #(
 
   always @(posedge clk) begin
     if (reset) begin
+      mac_mask        <= 32'b0;
       mac_reg         <= DEFAULT_MAC_ADDR;
       ip_reg          <= DEFAULT_IP_ADDR;
       udp_port        <= DEFAULT_UDP_PORT;

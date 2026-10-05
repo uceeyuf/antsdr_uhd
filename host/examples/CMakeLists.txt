@@ -9,6 +9,7 @@
 # example applications
 ########################################################################
 set(example_sources
+    antsdr_e310_digital_loopback.cpp
     benchmark_rate.cpp
     network_relay.cpp
     rx_multi_samples.cpp

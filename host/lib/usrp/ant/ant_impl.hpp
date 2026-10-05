@@ -51,7 +51,7 @@
  * */
 
 /* microphase */
-enum class antsdr_product_t { E200, E310V2, UNKNOWN };
+enum class antsdr_product_t { E200, E310, E310V2, UNKNOWN };
 
 enum b200_product_t { B200, B210, B200MINI, B205MINI };
 
@@ -161,6 +161,11 @@ private:
     //! This flag is true if the FPGA has custom (user) registers and access to
     // those needs to be enabled from software.
     const bool _enable_user_regs;
+    const bool _e310_fpga_loopback;
+    const bool _e310_codec_loopback;
+    bool _e310_codec_loopback_active = false;
+    uint8_t _e310_saved_dac_pd = 0;
+    uint8_t _e310_saved_analog_pd = 0;
 
     // Held for the complete lifetime of this device object. Declared before
     // transports/controllers so it is released only after they are destroyed.
@@ -213,6 +218,10 @@ private:
     void update_clock_source(const std::string&);
     void update_bandsel(const std::string& which, double freq);
     void reset_codec(void);
+    void reset_e310_data_port(void);
+    void enforce_e310_loopback_tx_off(void);
+    void configure_e310_codec_loopback(void);
+    void clear_e310_codec_loopback(void);
     void update_antenna_sel(const size_t which, const std::string& ant);
     uhd::sensor_value_t get_ref_locked(void);
     uhd::sensor_value_t get_fe_pll_locked(const bool is_tx);
@@ -252,7 +261,7 @@ private:
     struct gpio_state
     {
         uint32_t tx_bandsel_a, tx_bandsel_b, rx_bandsel_a, rx_bandsel_b, rx_bandsel_c,
-            codec_arst, mimo, ref_sel, swap_atr;
+            codec_arst, mimo, ref_sel, swap_atr, lvds_reset;
 
         gpio_state()
         {
@@ -262,6 +271,7 @@ private:
             rx_bandsel_b = 0;
             rx_bandsel_c = 0;
             codec_arst   = 0;
+            lvds_reset   = 0;
             mimo         = 0;
             ref_sel      = 0;
             swap_atr     = 0;

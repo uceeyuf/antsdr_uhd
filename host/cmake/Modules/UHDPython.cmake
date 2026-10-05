@@ -125,7 +125,10 @@ macro(PYTHON_CHECK_MODULE desc mod cmd have)
     execute_process(
         COMMAND ${PYTHON_EXECUTABLE} -c "
 #########################################
-from distutils.version import LooseVersion
+try:
+    from distutils.version import LooseVersion
+except ModuleNotFoundError:
+    from packaging.version import Version as LooseVersion
 try: import ${mod}
 except: exit(1)
 try: assert ${cmd}

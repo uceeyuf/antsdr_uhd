@@ -405,6 +405,11 @@ rx_streamer::sptr ant_impl::get_rx_stream(const uhd::stream_args_t& args_)
     if (args.otw_format.empty())
         args.otw_format = "sc16";
     args.channels = args.channels.empty() ? std::vector<size_t>(1, 0) : args.channels;
+    if (_antsdr_product == antsdr_product_t::E310
+        && (args.channels.size() != 1 || args.channels.front() != 0)) {
+        throw uhd::value_error("Experimental old E310 FPGA supports channel 0 only (1R1T)");
+    }
+
 
     if (_tree->access<bool>("/mboards/0/auto_tick_rate").get()) {
         set_auto_tick_rate(0, "", args.channels.size());
@@ -417,6 +422,9 @@ rx_streamer::sptr ant_impl::get_rx_stream(const uhd::stream_args_t& args_)
             _tree->access<std::vector<size_t>>("/mboards/0/rx_chan_dsp_mapping")
                 .get()
                 .at(args.channels[stream_i]);
+        if (_antsdr_product == antsdr_product_t::E310 && radio_index != 0) {
+            throw uhd::value_error("Experimental old E310 requires physical radio 0");
+        }
         radio_perifs_t& perif = _radio_perifs[radio_index];
         if (args.otw_format == "sc16")
             perif.ctrl->poke32(TOREG(SR_RX_FMT), 0);
@@ -609,6 +617,11 @@ tx_streamer::sptr ant_impl::get_tx_stream(const uhd::stream_args_t& args_)
     if (args.otw_format.empty())
         args.otw_format = "sc16";
     args.channels = args.channels.empty() ? std::vector<size_t>(1, 0) : args.channels;
+    if (_antsdr_product == antsdr_product_t::E310
+        && (args.channels.size() != 1 || args.channels.front() != 0)) {
+        throw uhd::value_error("Experimental old E310 FPGA supports channel 0 only (1R1T)");
+    }
+
 
     if (_tree->access<bool>("/mboards/0/auto_tick_rate").get()) {
         set_auto_tick_rate(0, "", args.channels.size());
@@ -621,6 +634,9 @@ tx_streamer::sptr ant_impl::get_tx_stream(const uhd::stream_args_t& args_)
             _tree->access<std::vector<size_t>>("/mboards/0/tx_chan_dsp_mapping")
                 .get()
                 .at(args.channels[stream_i]);
+        if (_antsdr_product == antsdr_product_t::E310 && radio_index != 0) {
+            throw uhd::value_error("Experimental old E310 requires physical radio 0");
+        }
         radio_perifs_t& perif = _radio_perifs[radio_index];
         const zero_copy_if::sptr tx_xport =
             radio_index == 0 ? _data_tx_transport : _data_tx1_transport;

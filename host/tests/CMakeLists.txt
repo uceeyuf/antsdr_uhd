@@ -446,3 +446,9 @@ endif()
 
 add_subdirectory(devtest)
 add_subdirectory(streaming_performance)
+
+# Header-only board-profile regression, independent of connected SDR hardware.
+if(ENABLE_ANT)
+    add_executable(ant_e310_profile_test ant_e310_profile_test.cpp)
+    add_test(NAME ant_e310_profile_test COMMAND ant_e310_profile_test)
+endif()

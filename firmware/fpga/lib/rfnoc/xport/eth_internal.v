@@ -441,7 +441,7 @@ module eth_internal #(
   end
 
   assign mac_status = 'd0;
-  assign phy_status[31:8] = 24'h0;
+  assign phy_status = 32'h0; // Virtual link: no physical PHY status.
   assign link_up = 1'b1;
 
   wire identify_enable = mac_led_ctl[0];

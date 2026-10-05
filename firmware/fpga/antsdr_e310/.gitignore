@@ -1,0 +1,14 @@
+/vivado/
+/artifacts/
+/ip/**/hdl/
+/ip/**/synth/
+/ip/**/sim/
+/ip/**/ip/
+/ip/fifo_4k_2clk/*
+!/ip/fifo_4k_2clk/fifo_4k_2clk.xci
+/ip/fifo_short_2clk/*
+!/ip/fifo_short_2clk/fifo_short_2clk.xci
+/ip/axi64_8k_2clk_fifo/*
+!/ip/axi64_8k_2clk_fifo/axi64_8k_2clk_fifo.xci
+/ip/gen_clks/*
+!/ip/gen_clks/gen_clks.xci

@@ -1,3 +1,4 @@
+#include <thread>
 //
 // Copyright 2012-2015 Ettus Research LLC
 // Copyright 2018 Ettus Research, a National Instruments Company
@@ -7,6 +8,7 @@
 
 #include "ant_impl.hpp"
 #include "ant_regs.hpp"
+#include "ant_ad9361_params.hpp"
 #include "uhd/cal/database.hpp"
 #include "uhd/config.hpp"
 #include "uhd/exception.hpp"
@@ -173,41 +175,6 @@ private:
 };
 
 
-class antsdr_ad9361_client_t : public ad9361_params
-{
-public:
-    ~antsdr_ad9361_client_t() override {}
-    double get_band_edge(frequency_band_t band) override
-    {
-        switch (band) {
-            case AD9361_RX_BAND0:
-                return 0; // Set these all to
-            case AD9361_RX_BAND1:
-                return 0; // zero, so RF port A
-            case AD9361_TX_BAND0:
-                return 0; // is used all the time
-            default:
-                return 0; // On both Rx and Tx
-        }
-    }
-    clocking_mode_t get_clocking_mode() override
-    {
-        return clocking_mode_t::AD9361_XTAL_N_CLK_PATH;
-    }
-    digital_interface_mode_t get_digital_interface_mode() override
-    {
-        return AD9361_DDR_FDD_LVCMOS;
-    }
-    digital_interface_delays_t get_digital_interface_timing() override
-    {
-        digital_interface_delays_t delays;
-        delays.rx_clk_delay  = 0;
-        delays.rx_data_delay = 0xF;
-        delays.tx_clk_delay  = 0;
-        delays.tx_data_delay = 0xF;
-        return delays;
-    }
-};
 
 /***********************************************************************
  * Helpers
@@ -342,6 +309,8 @@ static device_addrs_t ant_find(const device_addr_t& hint)
             mp_addr["serial"] = serial_str;
             if (mp_addr["product"].find("E200") == 0) {
                 mp_addr["name"] = "ANTSDR-E200";
+            } else if (mp_addr["product"] == "E310") {
+                mp_addr["name"] = "ANTSDR-E310";
             } else if (mp_addr["product"].find("E310") == 0) {
                 mp_addr["name"] = "ANTSDR-E310V2";
             } else {
@@ -389,6 +358,8 @@ ant_impl::ant_impl(const uhd::device_addr_t &device_addr)
     , // Some safe value
     _revision(0)
     , _enable_user_regs(device_addr.has_key("enable_user_regs"))
+    , _e310_fpga_loopback(device_addr.cast<bool>("e310_fpga_loopback", false))
+    , _e310_codec_loopback(device_addr.cast<bool>("e310_codec_loopback", false))
     , _time_source(UNKNOWN)
     , _tick_rate(0.0) // Forces a clock initialization at startup
 {
@@ -415,11 +386,18 @@ ant_impl::ant_impl(const uhd::device_addr_t &device_addr)
             device_addr.has_key("product") ? device_addr["product"] : "";
         if (ant_product.find("E200") == 0) {
             _antsdr_product = antsdr_product_t::E200;
+        } else if (ant_product == "E310") {
+            _antsdr_product = antsdr_product_t::E310;
         } else if (ant_product.find("E310") == 0) {
             _antsdr_product = antsdr_product_t::E310V2;
         } else {
             _antsdr_product = antsdr_product_t::UNKNOWN;
         }
+        if ((_e310_fpga_loopback || _e310_codec_loopback)
+            && _antsdr_product != antsdr_product_t::E310)
+            throw uhd::value_error("E310 digital loopback requires the old ANTSDR E310");
+        if (_e310_fpga_loopback && _e310_codec_loopback)
+            throw uhd::value_error("Select one E310 loopback point");
         const std::string addr = device_addr["addr"];
         UHD_LOGGER_INFO("ANT") << "Detected Device: ANTSDR";
 
@@ -546,8 +524,9 @@ ant_impl::ant_impl(const uhd::device_addr_t &device_addr)
         ////////////////////////////////////////////////////////////////////
         // Initialize the properties tree
         ////////////////////////////////////////////////////////////////////
-        std::string product_name = "B210";
-        _tree->create<std::string>("/name").set("B-Series Device");
+        std::string product_name = _antsdr_product == antsdr_product_t::E310 ? "ANTSDR E310" : "B210";
+        _tree->create<std::string>("/name").set(
+            _antsdr_product == antsdr_product_t::E310 ? "ANTSDR E310" : "B-Series Device");
         _tree->create<std::string>(mb_path / "name").set(product_name);
         _tree->create<std::string>(mb_path / "codename")
                 .set((_product == B200MINI or _product == B205MINI) ? "Pixie" : "Sasquatch");
@@ -592,7 +571,8 @@ ant_impl::ant_impl(const uhd::device_addr_t &device_addr)
         UHD_LOGGER_INFO("ANT") << "Initialize CODEC control...";
         reset_codec();
         ad9361_params::sptr client_settings;
-        client_settings = std::make_shared<antsdr_ad9361_client_t>();
+        client_settings = std::make_shared<antsdr_ad9361_client_t>(
+            _antsdr_product == antsdr_product_t::E310);
 
         _codec_ctrl = ad9361_ctrl::make_spi(client_settings, _spi_iface, AD9361_SLAVENO);
 
@@ -656,22 +636,139 @@ ant_impl::ant_impl(const uhd::device_addr_t &device_addr)
         // setup radio control
         ////////////////////////////////////////////////////////////////////
         UHD_LOGGER_INFO("ANT") << "Initialize Radio control...";
-        const size_t num_radio_chains = ((_local_ctrl->peek32(RB32_CORE_STATUS) >> 8) & 0xff);
+        const size_t fpga_radio_chains = ((_local_ctrl->peek32(RB32_CORE_STATUS) >> 8) & 0xff);
+        const size_t num_radio_chains = (_antsdr_product == antsdr_product_t::E310)
+            ? 1 : fpga_radio_chains;
+        UHD_ASSERT_THROW(fpga_radio_chains >= num_radio_chains);
         UHD_ASSERT_THROW(num_radio_chains > 0);
         UHD_ASSERT_THROW(num_radio_chains <= 2);
         _radio_perifs.resize(num_radio_chains);
         _codec_mgr = ad936x_manager::make(_codec_ctrl, num_radio_chains);
         _codec_mgr->init_codec();
+        if (_antsdr_product == antsdr_product_t::E310) {
+            // Exercise the digital self-test at the explicitly requested rate.
+            if (device_addr.has_key("master_clock_rate"))
+                _codec_ctrl->set_clock_rate(device_addr.cast<double>("master_clock_rate", 50e6));
+            // The board's LVDS logic is fixed to channel 0 and 1R1T framing.
+            _codec_ctrl->set_timing_mode("1R1T");
+            _codec_ctrl->set_active_chains(true, false, true, false);
+        }
         for (size_t i = 0; i < _radio_perifs.size(); i++)
             this->setup_radio(i);
 
+        reset_e310_data_port();
+
+        // Temporary board diagnostics, kept separate from normal startup tests.
+        if (_antsdr_product == antsdr_product_t::E310 && device_addr.has_key("e310_diagnose")) {
+            spi_config_t config;
+            config.mosi_edge = spi_config_t::EDGE_FALL;
+            config.miso_edge = spi_config_t::EDGE_FALL;
+            auto rd = [&](uint32_t a) { return _spi_iface->read_spi(AD9361_SLAVENO, config, a << 8, 24) & 255; };
+            auto wr = [&](uint32_t a, uint32_t v) { _spi_iface->write_spi(AD9361_SLAVENO, config, 0x800000 | (a << 8) | v, 24); };
+            for (auto a : {0x002,0x003,0x006,0x007,0x010,0x011,0x012,0x014,0x015,0x017,0x037,0x03c,0x03d,0x03e})
+                UHD_LOGGER_INFO("E310 DIAG") << boost::format("reg %03x = %02x") % a % rd(a);
+            const auto normal_iq_config = rd(0x010);
+            auto ctrl = _radio_perifs.at(0).ctrl;
+            ctrl->poke32(TOREG(SR_FP_GPIO + 4), 0); // Read all diagnostic inputs.
+            ctrl->poke32(TOREG(SR_FP_GPIO + 5), 7); // Page select ignores ATR.
+            ctrl->poke32(TOREG(SR_FP_GPIO), 0);
+            _codec_ctrl->data_port_loopback(false);
+            _codec_ctrl->set_active_chains(false, false, true, false);
+            // ADI BIST_CTRL_POINT(2) | BIST_ENABLE: receive-side PRBS only.
+            wr(0x3f4, 9);
+            for (auto mask : {0x08,0x04,0x00}) {
+                wr(0x3f6,mask);
+                for (int n=0;n<3;n++) {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(2));
+                    UHD_LOGGER_INFO("E310 DIAG") << boost::format("RX PRBS mask %02x data %08x") % mask % uint32_t(ctrl->peek64(RB64_CODEC_READBACK));
+                }
+            }
+            for (int n=0;n<8;n++) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(2));
+                UHD_LOGGER_INFO("E310 DIAG") << boost::format("PRBS RX %08x GPIO %03x") % uint32_t(ctrl->peek64(RB64_CODEC_READBACK)) % ctrl->peek32(RB32_FP_GPIO);
+            }
+            wr(0x3f4, 0);
+            _codec_ctrl->set_active_chains(true, false, true, false);
+            _codec_ctrl->data_port_loopback(true);
+            // Verify distinct I/Q values and distinct six-bit halves.
+            for (uint32_t pattern : {0x12304560u, 0x80007ff0u, 0x00f0f000u}) {
+                ctrl->poke32(TOREG(SR_CODEC_IDLE), pattern);
+                std::this_thread::sleep_for(std::chrono::milliseconds(2));
+                const auto value = ctrl->peek64(RB64_CODEC_READBACK);
+                UHD_LOGGER_INFO("E310 DIAG") << boost::format("IQ expected %08x TX %08x RX %08x GPIO %03x") % pattern % uint32_t(value >> 32) % uint32_t(value) % ctrl->peek32(RB32_FP_GPIO);
+                uint64_t snapshot = 0;
+                for (unsigned page=1;page<=6;page++) {
+                    ctrl->poke32(TOREG(SR_FP_GPIO), page);
+                    snapshot |= uint64_t(ctrl->peek32(RB32_FP_GPIO) & 255) << (8*(page-1));
+                }
+                ctrl->poke32(TOREG(SR_FP_GPIO), 0);
+                UHD_LOGGER_INFO("E310 DIAG") << boost::format("TX LVDS snapshot %012x FIFO I=%03x Q=%03x status=%02x serial=%03x")
+                    % snapshot % ((snapshot>>12)&4095) % (snapshot&4095) % ((snapshot>>24)&255) % ((snapshot>>32)&4095);
+            }
+            ctrl->poke32(TOREG(SR_CODEC_IDLE), 0x12304560);
+            for (unsigned tx=0;tx<16;tx++) {
+                wr(7, (7<<4)|tx);
+                std::string row;
+                for (unsigned rx=0;rx<16;rx++) {
+                    wr(6,rx);
+                    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                    uint64_t value=ctrl->peek64(RB64_CODEC_READBACK);
+                    row += uint32_t(value)==0x12304560 ? 'O' : uint32_t(value)==0 ? '0' : '.';
+                    if (rx==4 && tx==0) UHD_LOGGER_INFO("E310 DIAG") << boost::format("RX sample %08x") % uint32_t(value);
+                }
+                UHD_LOGGER_INFO("E310 DIAG") << "TX data delay " << tx << ": " << row;
+            }
+            wr(6,4);
+            for (unsigned clk=0;clk<16;clk++) {
+                std::string row;
+                for (unsigned data=0;data<16;data++) {
+                    wr(7,(clk<<4)|data);
+                    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                    auto value=uint32_t(ctrl->peek64(RB64_CODEC_READBACK));
+                    row += value==0x12304560 ? 'O' : value==0 ? '0' : '.';
+                    if (value) UHD_LOGGER_INFO("E310 DIAG") << boost::format("TX timing %02x RX %08x") % ((clk<<4)|data) % value;
+                }
+                UHD_LOGGER_INFO("E310 DIAG") << "TX clock delay " << clk << ": " << row;
+            }
+            for (auto a : {0x002,0x003,0x010,0x012,0x017,0x3f4,0x3f5,0x3f6})
+                UHD_LOGGER_INFO("E310 DIAG") << boost::format("end reg %03x = %02x") % a % rd(a);
+            // Isolate the TX clock/frame polarity from fine delay adjustment.
+            wr(6,4); wr(7,0x70);
+            ctrl->poke32(TOREG(SR_CODEC_IDLE), 0x12304560);
+            for (auto polarity : {0x0f,0x8f,0x4f,0xcf}) {
+                wr(0x03e,polarity);
+                std::this_thread::sleep_for(std::chrono::milliseconds(5));
+                UHD_LOGGER_INFO("E310 DIAG") << boost::format("TX polarity %02x RX %08x") % polarity % uint32_t(ctrl->peek64(RB64_CODEC_READBACK));
+            }
+            wr(0x03e,0x0f);
+            for (auto iq_config : {0xc8,0x48,0x88,0x08}) {
+                wr(0x010,iq_config);
+                std::this_thread::sleep_for(std::chrono::milliseconds(5));
+                UHD_LOGGER_INFO("E310 DIAG") << boost::format("IQ config %02x RX %08x") % iq_config % uint32_t(ctrl->peek64(RB64_CODEC_READBACK));
+            }
+            wr(0x010,normal_iq_config);
+            wr(6,4);wr(7,0x70);ctrl->poke32(TOREG(SR_CODEC_IDLE),0);
+            _codec_ctrl->data_port_loopback(false);
+            _codec_ctrl->set_active_chains(false, false, true, false);
+            throw uhd::runtime_error("E310 diagnostic scan finished; normal startup not attempted");
+        }
+
         // now test each radio module's connection to the codec interface
         for (radio_perifs_t &perif: _radio_perifs) {
-            _codec_mgr->loopback_self_test(
+            try {
+                _codec_mgr->loopback_self_test(
                     [&perif](const uint32_t value) {
                         perif.ctrl->poke32(TOREG(SR_CODEC_IDLE), value);
                     },
                     [&perif]() { return perif.ctrl->peek64(RB64_CODEC_READBACK); });
+            } catch (...) {
+                if (_antsdr_product == antsdr_product_t::E310) {
+                    UHD_SAFE_CALL(perif.ctrl->poke32(TOREG(SR_CODEC_IDLE), 0);)
+                    UHD_SAFE_CALL(_codec_ctrl->data_port_loopback(false);)
+                    UHD_SAFE_CALL(_codec_ctrl->set_active_chains(false, false, true, false);)
+                }
+                throw;
+            }
         }
 
         // register time now and pps onto available radio cores
@@ -706,7 +803,9 @@ ant_impl::ant_impl(const uhd::device_addr_t &device_addr)
                         std::bind(&ant_impl::update_time_source, this, std::placeholders::_1));
         // setup reference source props
         const std::vector<std::string> clock_sources =
-                (_gpsdo_capable) ? std::vector<std::string>{"internal", "external", "gpsdo"}
+                (_antsdr_product == antsdr_product_t::E310)
+                ? std::vector<std::string>{"internal"}
+                : (_gpsdo_capable) ? std::vector<std::string>{"internal", "external", "gpsdo"}
                                  : std::vector<std::string>{"internal", "external"};
         _tree->create<std::vector<std::string>>(mb_path / "clock_source" / "options")
                 .set(clock_sources);
@@ -816,11 +915,59 @@ ant_impl::ant_impl(const uhd::device_addr_t &device_addr)
             _radio_perifs[i].duc->set_host_rate(
                     default_tick_rate / ad936x_manager::DEFAULT_INTERP);
         }
+        if (_e310_fpga_loopback) {
+            enforce_e310_loopback_tx_off();
+            _codec_ctrl->data_port_loopback(false);
+            for (auto& perif : _radio_perifs) {
+                perif.ctrl->poke32(TOREG(SR_CODEC_IDLE), 0);
+                perif.ctrl->poke32(TOREG(SR_LOOPBACK), 1);
+            }
+            UHD_LOGGER_INFO("ANT") << "E310 FPGA streaming loopback enabled; AD9361 TX1/TX2 disabled and read back.";
+        }
+        if (_e310_codec_loopback) {
+            try {
+                configure_e310_codec_loopback();
+                // This diagnostic mode must not run analog calibrations while
+                // its DACs/mixers are powered down. Recreate the device to tune.
+                for (const auto& dir : {"rx_frontends", "tx_frontends"}) {
+                    const auto fe = mb_path / "dboards" / "A" / dir / "A";
+                    for (const auto& path : {fe / "freq/value", fe / "bandwidth/value"})
+                        _tree->access<double>(path).set_coercer([](double) -> double {
+                            throw uhd::value_error("RF tuning is disabled during E310 CODEC loopback");
+                        });
+                    // RX gain only updates RX gain-table selection; allow RF
+                    // adapters to initialize it. TX attenuation must stay muted.
+                    if (std::string(dir) == "tx_frontends")
+                        for (const auto& gain : _tree->list(fe / "gains"))
+                            _tree->access<double>(fe / "gains" / gain / "value")
+                                .set_coercer([](double) -> double {
+                                    throw uhd::value_error("TX gain is fixed during E310 CODEC loopback");
+                                });
+                }
+                _tree->create<sensor_value_t>(mb_path / "sensors/e310_loopback_isolated")
+                    .set_publisher([this]() {
+                        configure_e310_codec_loopback();
+                        return sensor_value_t("TX RF isolation", true, "verified", "failed");
+                    });
+            } catch (...) {
+                UHD_SAFE_CALL(clear_e310_codec_loopback();)
+                throw;
+            }
+        }
     }
 }
 
 ant_impl::~ant_impl(void)
 {
+    UHD_SAFE_CALL(clear_e310_codec_loopback();)
+    if (_e310_fpga_loopback) {
+        UHD_SAFE_CALL(enforce_e310_loopback_tx_off();)
+        UHD_SAFE_CALL(_codec_ctrl->data_port_loopback(false);)
+        for (auto& perif : _radio_perifs) {
+            UHD_SAFE_CALL(perif.ctrl->poke32(TOREG(SR_CODEC_IDLE), 0);)
+            UHD_SAFE_CALL(perif.ctrl->poke32(TOREG(SR_LOOPBACK), 0);)
+        }
+    }
     UHD_SAFE_CALL(_async_task.reset();)
 }
 
@@ -851,6 +998,8 @@ void ant_impl::setup_radio(const size_t dspno)
         .add_coerced_subscriber(std::bind(
             &radio_ctrl_core_3000::set_tick_rate, perif.ctrl, std::placeholders::_1));
     this->register_loopback_self_test(perif.ctrl);
+    if (_antsdr_product == antsdr_product_t::E310)
+        perif.ctrl->poke32(TOREG(SR_LOOPBACK), 0);
 
     ////////////////////////////////////////////////////////////////////
     // Set up peripherals
@@ -1130,7 +1279,11 @@ double ant_impl::set_tick_rate(const double new_tick_rate)
         return _tick_rate;
     }
 
+    if (_e310_codec_loopback_active)
+        throw uhd::value_error("Set master_clock_rate before enabling E310 CODEC loopback");
+
     _tick_rate = _codec_ctrl->set_clock_rate(new_tick_rate);
+    reset_e310_data_port();
     UHD_LOGGER_INFO("ANT") << (boost::format("Actually got clock rate %.6f MHz.")
                                 % (_tick_rate / 1e6));
 
@@ -1269,6 +1422,22 @@ void ant_impl::sync_times()
 
 void ant_impl::update_bandsel(const std::string& which, double freq)
 {
+    if (_antsdr_product == antsdr_product_t::E310) {
+        const bool high = freq > 3e9;
+        if (which == "RX" || which == "RX1" || which == "RX2") {
+            _gpio_state.rx_bandsel_a = high;
+            _gpio_state.rx_bandsel_b = !high;
+            _gpio_state.rx_bandsel_c = 0;
+        } else if (which == "TX" || which == "TX1" || which == "TX2") {
+            _gpio_state.tx_bandsel_a = high;
+            _gpio_state.tx_bandsel_b = !high;
+        } else {
+            UHD_THROW_INVALID_CODE_PATH();
+        }
+        update_gpio_state();
+        return;
+    }
+
     // B205 does not have bandsels
     if (_product == B200MINI or _product == B205MINI) {
         return;
@@ -1315,10 +1484,23 @@ void ant_impl::reset_codec()
     update_gpio_state();
 }
 
+void ant_impl::reset_e310_data_port(void)
+{
+    if (_antsdr_product != antsdr_product_t::E310) return;
+    // AD9361 initialization/rate changes can stop DATA_CLK. Clear the LVDS
+    // FIFOs only after the new clocks are running; preserve the radio core.
+    _gpio_state.lvds_reset = 1;
+    update_gpio_state();
+    std::this_thread::sleep_for(std::chrono::milliseconds(2));
+    _gpio_state.lvds_reset = 0;
+    update_gpio_state();
+    std::this_thread::sleep_for(std::chrono::milliseconds(2));
+}
+
 void ant_impl::update_gpio_state(void)
 {
     const uint32_t misc_word =
-        0 | (_gpio_state.swap_atr << 8) | (_gpio_state.tx_bandsel_a << 7)
+        0 | (_gpio_state.lvds_reset << 9) | (_gpio_state.swap_atr << 8) | (_gpio_state.tx_bandsel_a << 7)
         | (_gpio_state.tx_bandsel_b << 6) | (_gpio_state.rx_bandsel_a << 5)
         | (_gpio_state.rx_bandsel_b << 4) | (_gpio_state.rx_bandsel_c << 3)
         | (_gpio_state.codec_arst << 2) | (_gpio_state.mimo << 1)
@@ -1402,8 +1584,13 @@ void ant_impl::update_enables(void)
     }
 
     // setup the active chains in the codec
-    _codec_ctrl->set_active_chains(enb_tx1, enb_tx2, enb_rx1, enb_rx2);
-    if ((num_rx + num_tx) == 0)
+    if (_e310_codec_loopback_active)
+        configure_e310_codec_loopback(); // Preserve digital TX; do not recalibrate.
+    else if (_e310_fpga_loopback)
+        enforce_e310_loopback_tx_off();
+    else
+        _codec_ctrl->set_active_chains(enb_tx1, enb_tx2, enb_rx1, enb_rx2);
+    if (!_e310_fpga_loopback && !_e310_codec_loopback_active && (num_rx + num_tx) == 0)
         _codec_ctrl->set_active_chains(true, false, true, false); // enable something
 
     // figure out if mimo is enabled based on new state
@@ -1412,6 +1599,80 @@ void ant_impl::update_enables(void)
 
     // atrs change based on enables
     this->update_atrs();
+}
+
+void ant_impl::enforce_e310_loopback_tx_off(void)
+{
+    // Keep RX1 and the radio clock running, but no RF transmit chain.
+    _codec_ctrl->set_active_chains(false, false, true, false);
+    spi_config_t config;
+    config.mosi_edge = spi_config_t::EDGE_FALL;
+    config.miso_edge = spi_config_t::EDGE_FALL;
+    const auto tx_enable = _spi_iface->read_spi(
+        AD9361_SLAVENO, config, 0x002 << 8, 24) & 0xc0;
+    if (tx_enable)
+        throw uhd::runtime_error("E310 digital loopback: RF TX disable readback failed");
+}
+
+void ant_impl::configure_e310_codec_loopback(void)
+{
+    spi_config_t config;
+    config.mosi_edge = spi_config_t::EDGE_FALL;
+    config.miso_edge = spi_config_t::EDGE_FALL;
+    auto rd = [&](uint32_t a) {
+        return _spi_iface->read_spi(AD9361_SLAVENO, config, a << 8, 24) & 255;
+    };
+    auto wr = [&](uint32_t a, uint32_t value) {
+        _spi_iface->write_spi(AD9361_SLAVENO, config, 0x800000 | (a << 8) | value, 24);
+    };
+    if (!_e310_codec_loopback_active) {
+        _e310_saved_dac_pd = rd(0x056);
+        _e310_saved_analog_pd = rd(0x057);
+        _e310_codec_loopback_active = true; // Arm exception cleanup before writing.
+        // Keep the digital TX port clocked. Isolate its RF path independently:
+        // power down both TX DACs and upconverters, then apply ADI's 89.75 dB mute.
+        // Do this only after the normal initialization/calibrations have completed.
+        wr(0x057, _e310_saved_analog_pd | 0x03);
+        wr(0x056, _e310_saved_dac_pd | 0x0c);
+        _codec_ctrl->set_gain("TX1", 0.0);
+        _codec_ctrl->set_gain("TX2", 0.0);
+        _codec_ctrl->data_port_loopback(true);
+        for (auto& perif : _radio_perifs) {
+            perif.ctrl->poke32(TOREG(SR_CODEC_IDLE), 0);
+            perif.ctrl->poke32(TOREG(SR_LOOPBACK), 0);
+        }
+    }
+    const auto tx = rd(0x002), rx = rd(0x003), dac = rd(0x056), analog = rd(0x057);
+    const auto attenuation1 = rd(0x073) | ((rd(0x074) & 1) << 8);
+    const auto attenuation2 = rd(0x075) | ((rd(0x076) & 1) << 8);
+    if ((tx & 0xc0) != 0x40 || (rx & 0xc0) != 0x40 || (dac & 0x0c) != 0x0c
+        || (analog & 3) != 3 || attenuation1 != 359 || attenuation2 != 359
+        || rd(0x3f5) != 1)
+        throw uhd::runtime_error("E310 CODEC loopback digital-enable/RF-isolation readback failed");
+    UHD_LOGGER_INFO("E310 LOOPBACK") << boost::format(
+        "TX/RX digital enabled: 002=%02x 003=%02x; RF isolation: 056=%02x 057=%02x; attenuation=%u/%u x0.25dB; 3f5=01")
+        % tx % rx % dac % analog % attenuation1 % attenuation2;
+}
+
+void ant_impl::clear_e310_codec_loopback(void)
+{
+    if (!_e310_codec_loopback_active) return;
+    for (auto& perif : _radio_perifs)
+        perif.ctrl->poke32(TOREG(SR_CODEC_IDLE), 0);
+    // Disable TX first; if this fails, leave analog isolation in place.
+    _codec_ctrl->set_active_chains(false, false, true, false);
+    _codec_ctrl->data_port_loopback(false);
+    spi_config_t config;
+    config.mosi_edge = spi_config_t::EDGE_FALL;
+    config.miso_edge = spi_config_t::EDGE_FALL;
+    const auto tx = _spi_iface->read_spi(AD9361_SLAVENO, config, 0x002 << 8, 24);
+    if (tx & 0xc0) throw uhd::runtime_error("E310 CODEC loopback cleanup: TX disable failed");
+    _spi_iface->write_spi(AD9361_SLAVENO, config,
+        0x800000 | (0x056 << 8) | _e310_saved_dac_pd, 24);
+    _spi_iface->write_spi(AD9361_SLAVENO, config,
+        0x800000 | (0x057 << 8) | _e310_saved_analog_pd, 24);
+    _e310_codec_loopback_active = false;
+    UHD_LOGGER_INFO("E310 LOOPBACK") << "Cleanup: TX chains disabled; CODEC loopback off; analog overrides restored.";
 }
 
 /* mirophasse
