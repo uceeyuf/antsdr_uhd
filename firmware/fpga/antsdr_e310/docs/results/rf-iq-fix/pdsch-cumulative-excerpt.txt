@@ -1,0 +1,12 @@
+Selected lines from native-cumulative-20k.log; intermediate screen refreshes omitted.
+SHA256 of full original log: 789d4456a042b5a34b832e4f31ab034efd7c558ed192234d529f1e698659be03
+
+[ERROR] [STREAMER] The receive packet handler caught a value exception.
+ValueError: bad vrt header or packet fragment
+Setting rx sampling rate 15.36 MHz
+ - PCI:             27
+ - Nof ports:       2
+ - PRB:             50
+Decoded MIB. SFN: 716, offset: 0
+RX_DIAGNOSTICS overflow=0 late=0 other=0
+PDSCH_TOTAL blocks=1000 errors=354

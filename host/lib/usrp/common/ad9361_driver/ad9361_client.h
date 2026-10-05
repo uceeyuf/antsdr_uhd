@@ -56,8 +56,10 @@ public:
     virtual digital_interface_delays_t get_digital_interface_timing() = 0;
     virtual digital_interface_mode_t get_digital_interface_mode() = 0;
     virtual clocking_mode_t get_clocking_mode() = 0;
-    // Most existing LVDS designs swap TX IQ; board-specific serializers may not.
+    // Values of the AD9361 PP_TX_SWAP_IQ / PP_RX_SWAP_IQ interface bits.
+    // Board profiles may override the default port ordering.
     virtual bool get_tx_iq_swap() { return true; }
+    virtual bool get_rx_iq_swap() { return true; }
     virtual double get_band_edge(frequency_band_t band) = 0;
 };
 

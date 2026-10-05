@@ -3,7 +3,7 @@
 <span id="en">Original ANTSDR E310 Micro-USB: UHD Port</span>
 ===========================
 
-Experimental board port for single-channel UHD streaming. The target is the original ANTSDR E310 Micro-USB, not the Ettus E310 or ANTSDR E310V2. JTAG bring-up passed an OCM program and a 16 KiB DDR check, then booted Linux with PS GEM, nixge DMA and a bridge. UHD discovery, register loopback, AD9361 digital loopback and srsRAN RF API streaming pass. The highest passing duplex test is 7.68 MS/s for 5 seconds; 15.36 MS/s still underflows/overflows. RF loopback and a complete LTE cell have not been verified.
+Experimental board port for single-channel UHD streaming. The target is the original ANTSDR E310 Micro-USB, not the Ettus E310 or ANTSDR E310V2. JTAG bring-up passed an OCM program and a 16 KiB DDR check, then booted Linux with PS GEM, nixge DMA and a bridge. UHD discovery, register loopback, AD9361 digital loopback and srsRAN RF API streaming pass. Passing duplex tests reach 7.68 MS/s with `sc16` and 15.36 MS/s with `sc8`; 15.36 MS/s `sc16` duplex still underflows/overflows. RF loopback and an E310-backed LTE cell have not been verified. LTE broadcast reception and a separate software-USIM/ZMQ attach test are now verified; see [LTE receive](docs/lte-receive.md).
 
 Update (2026-10-05): `sc8` duplex at 15.36 MS/s passed the QPSK check. The results below use `sc16` unless stated otherwise. The checker accepts an optional final `sc16|sc8` argument, default `sc16`. See [throughput diagnosis](docs/2026-10-05-diagnostics.md) for the new TX window option and measured limits.
 
@@ -31,7 +31,7 @@ The RX IDDR falling-edge half-word needs one cycle of alignment; TX uses an inve
 
 The reference's second-channel `adc_data_q2 <= rx_data_i2_r2` assignment is a typo. This port uses only the first channel and does not reuse that second-channel path.
 
-TX FIFO recovery requires more than a longer startup reset: after AD9361 initialization it could remain full=1/empty=1. UHD now pulses `SR_CORE_MISC[9]` for 2 ms to reset only the LVDS interface after DATA_CLK stabilizes, including master-clock changes. Separate masked PRBS checks established the RX I/Q mapping. This TX serializer requires AD9361 TX IQ swap disabled and RX IQ swap retained (`0x010=0x48` in 1R1T). Three repeated initializations passed; a 10-second 1.92 MS/s RX run had no dropped samples, overflow, sequence errors or timeouts.
+TX FIFO recovery requires more than a longer startup reset: after AD9361 initialization it could remain full=1/empty=1. UHD now pulses `SR_CORE_MISC[9]` for 2 ms to reset only the LVDS interface after DATA_CLK stabilizes, including master-clock changes. Digital PRBS and CODEC checks alone did not establish the RF spectrum orientation. External LTE reception exposed an I/Q ordering error; the corrected old-E310 profile clears `PP_RX_SWAP_IQ` and sets `PP_TX_SWAP_IQ` (`0x010=0x88` in 1R1T). Both RF receive and CODEC regressions now pass without host conjugation; see [LTE receive and I/Q diagnosis](docs/lte-receive.md). Three repeated initializations passed; a 10-second 1.92 MS/s RX run had no dropped samples, overflow, sequence errors or timeouts.
 
 ## Data Path
 
@@ -67,7 +67,7 @@ Reports go to `artifacts/`. `e310_synthesis_only.xsa` has no bitstream; `antsdr_
 1. The selected electrical configuration follows standalone's pins, LVDS_25, internal differential termination and LVCMOS25, as specified for this bring-up. The public Micro-USB schematic labels VCC_1V8 differently; this configuration is not a measured rail-voltage result. DRC severity was not reduced.
 2. Complete external input/output timing constraints and CDC review remain open. Routed internal timing alone does not establish external interface timing over all AD9361 rates; initial LVDS delays require board testing.
 3. Only channel 0 is supported. The inherited CHDR 12-bit conversion logic still has latch warnings; these tests use `sc16`.
-4. RF transmission/wired RF loopback, long-duration throughput and a complete LTE stack remain unverified. The diagnostic GPIO readback page reports internal LVDS status, not external GPIO.
+4. RF transmission/wired RF loopback, long-duration throughput and a complete LTE stack using E310 RF remain unverified. The diagnostic GPIO readback page reports internal LVDS status, not external GPIO.
 
 ## Digital Loopback Results (2026-09-30)
 
@@ -94,7 +94,7 @@ Before IRQ splitting, a 5-second 7.68 MS/s duplex diagnostic recorded 40 RX over
 ### srsRAN RF API
 
 Used srsRAN_4G `bef8680d5f9714f3e040e6f9cbc88d7888439b6d` (25.10.0), building only the RF libraries and linking this fork's UHD. Source and compile instructions: [tests/srsran/README.md](tests/srsran/README.md).
-At 1.92 MS/s, TX 2,304,000 / RX 1,920,000 samples, zero RF errors and timestamp gaps, coherent +30 kHz tone power 0.999986498, image rejection 108.479 dB. The plugin uses `uhd_unknown` Generic handling. Full srsENB/EPC was neither built nor started, and no LTE cell or phone attachment was tested.
+At 1.92 MS/s, TX 2,304,000 / RX 1,920,000 samples, zero RF errors and timestamp gaps, coherent +30 kHz tone power 0.999986498, image rejection 108.479 dB. The plugin uses `uhd_unknown` Generic handling. A later, separate software-USIM/ZMQ test completed srsUE/eNB/EPC attachment and bidirectional ping; see [LTE tests](docs/lte-receive.md). E310 RF cell operation and phone attachment remain untested.
 
 ### Later RF Validation
 
@@ -111,8 +111,9 @@ This commit contains sources and tests. Generated bit/XSA files, JTAG RAM boot p
 不是 Ettus E310，也不是 ANTSDR E310V2。PS 已通过 JTAG 完成最小 OCM 程序和
 16 KiB DDR 初测，并已通过 JTAG 启动 Linux、PS GEM 网口、nixge DMA 和 bridge；
 UHD 发现、寄存器回环、AD9361 CODEC 数字回环和 srsRAN RF API 收发已通过。
-当前最高通过的双向数字回环测试档位为 7.68 MS/s（5 秒）；15.36 MS/s 仍有欠载／溢出。
-完整 LTE 小区、手机入网和射频回环尚未验证。测试记录见下文。
+双向数字回环已通过 `sc16` 7.68 MS/s 和 `sc8` 15.36 MS/s；
+15.36 MS/s 的 `sc16` 双向仍有欠载／溢出。
+使用 E310 的完整 LTE 小区、手机入网和射频回环尚未验证。LTE 广播接收和独立的软件 USIM／ZMQ 入网已通过，见 [LTE 测试](docs/lte-receive.md#cn)。
 
 2026-10-05 更新：15.36 MS/s 的 `sc8` 双向 QPSK 检查通过。下文原有结果如无特别说明均为 `sc16`。检查器新增最后一个可选参数 `sc16|sc8`，默认 `sc16`。新 TX 窗口选项和实测限制见[吞吐定位](docs/2026-10-05-diagnostics.md#cn)。
 
@@ -204,11 +205,13 @@ E310V2 的启动镜像混用。板端三个 C 程序使用对应 rootfs 的 ARM 
 4. UHD host、JTAG Linux、桥接、设备发现、寄存器回环和 CODEC 数字回环已实测通过。
    TX FIFO 在 AD9361 初始化后曾卡于 full=1/empty=1；延长上电复位不足以解决，
    必须在 DATA_CLK 稳定后使用 SR_CORE_MISC[9] 单独复位 LVDS 接口。host 在初始化及
-   主时钟变化后执行此复位。RX I/Q 用独立屏蔽的 PRBS 确认；本 TX 串行器要求关闭
-   AD9361 TX IQ swap（1R1T 寄存器0x010=0x48），保留 RX IQ swap。
+   主时钟变化后执行此复位。数字 PRBS／CODEC 自检不能独立确认射频频谱方向。
+   真实 LTE 接收发现了 I/Q 顺序错误；修正后的老 E310 配置清除 `PP_RX_SWAP_IQ`、
+   设置 `PP_TX_SWAP_IQ`（1R1T 寄存器 `0x010=0x88`），无需主机共轭。
+   射频接收和 CODEC 回归均已通过，见 [LTE 接收与 I/Q 定位](docs/lte-receive.md#cn)。
    三次重新初始化均通过；1.92 MS/s 单通道 RX 10秒测试无丢样、overflow、序号错误或超时。
    srsRAN RF API 的 1.92 MS/s CODEC 回环已通过；RF 发射／有线 RF 回环、
-   长时吞吐和完整 LTE 协议接入尚未验收。
+   长时吞吐和使用 E310 射频的完整 LTE 协议接入尚未验收。
    现有 CHDR 12-bit 转换模块仍有继承的 latch 告警；首轮使用 `sc16`。
 
 `build.sh rebuild` 可在一个 Vivado 进程内执行综合、实现、位流导出；导出前检查 DRC
@@ -252,8 +255,9 @@ error 42，CPU0 网络软中断占满；分核后通过上表测试。15.36 MS/s
 只构建 RF 库，并链接本分支 UHD。独立测试源码与编译方法见
 [tests/srsran/README.md](tests/srsran/README.md)。1.92 MS/s 实测 TX 2,304,000、RX 1,920,000，
 RF 错误及时间戳断点为 0，+30 kHz 单音相干功率占比 0.999986498、镜像抑制 108.479 dB。
-srsRAN 插件使用 `uhd_unknown` 的 Generic 路径。尚未编译／启动完整 srsENB/EPC，
-未建立 LTE 小区，也未做手机入网。
+srsRAN 插件使用 `uhd_unknown` 的 Generic 路径。后续独立的软件 USIM／ZMQ 测试已完成
+srsUE/eNB/EPC 入网与双向 ping，见 [LTE 测试](docs/lte-receive.md#cn)；
+尚未通过 E310 建立射频小区，也未做手机入网。
 
 ### 后续射频回环
 

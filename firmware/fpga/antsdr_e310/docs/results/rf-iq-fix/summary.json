@@ -1,0 +1,55 @@
+{
+  "date": "2026-10-05",
+  "board": "ANTSDR E310 Micro-USB",
+  "rx_software_conjugation": false,
+  "ad9361_register_0x010_1r1t": "0x88",
+  "lte": {
+    "center_hz": 806000000,
+    "earfcn": 6300,
+    "pci": 27,
+    "prb": 50,
+    "tx_ports": 2,
+    "matching_mib_decodes": 3
+  },
+  "si_receive": {
+    "requested_subframes": 20000,
+    "sample_rate": 15360000,
+    "wire_format": "sc8",
+    "rx_gain_db": 35,
+    "reference_cfo_tracking": true,
+    "detected_transport_blocks": 1000,
+    "crc_pass": 646,
+    "crc_fail": 354,
+    "cumulative_bler_percent": 35.4,
+    "rf_callbacks": {
+      "overflow": 0,
+      "late": 0,
+      "other": 0
+    },
+    "bad_vrt_exceptions": 1,
+    "status": "partial decoding; packet error unresolved"
+  },
+  "digital_loopback": [
+    {
+      "rate": 1920000,
+      "format": "sc16",
+      "seconds": 1,
+      "checked_bits": 118400,
+      "bit_errors": 0
+    },
+    {
+      "rate": 7680000,
+      "format": "sc16",
+      "seconds": 2,
+      "checked_bits": 958400,
+      "bit_errors": 0
+    },
+    {
+      "rate": 15360000,
+      "format": "sc8",
+      "seconds": 2,
+      "checked_bits": 1918400,
+      "bit_errors": 0
+    }
+  ]
+}

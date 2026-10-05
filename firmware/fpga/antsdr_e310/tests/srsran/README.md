@@ -31,6 +31,9 @@ PASS requires exact TX/RX counts, no RF callbacks reporting errors, continuous
 RX timestamps, coherent tone power >99%, and image rejection >40 dB.
 This exercises the srsRAN RF abstraction and UHD plugin, not the LTE protocol stack.
 
+For receive-only LTE examples, native I/Q validation and the optional AGPL-3.0
+srsRAN diagnostic patch, see [LTE reception](../../docs/lte-receive.md).
+
 ---
 
 <span id="cn"></span>
@@ -52,3 +55,6 @@ This exercises the srsRAN RF abstraction and UHD plugin, not the LTE protocol st
 PASS 要求 TX/RX 数量准确、RF 回调无错误、RX 时间戳连续、
 单音相干功率占比大于 99%、镜像抑制大于 40 dB。
 验证对象是 srsRAN RF 抽象层与 UHD 插件，尚未包含 LTE 协议栈。
+
+仅接收 LTE 示例、原生 I/Q 验证与 AGPL-3.0 srsRAN 诊断补丁见
+[LTE 接收](../../docs/lte-receive.md#cn)。

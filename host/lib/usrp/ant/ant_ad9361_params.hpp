@@ -33,7 +33,9 @@ public:
     {
         return _e310 ? AD9361_DDR_FDD_LVDS : AD9361_DDR_FDD_LVCMOS;
     }
-    bool get_tx_iq_swap() override { return !_e310; }
+    // Match the old E310 LVDS edge mapping: PP_RX_SWAP_IQ=0, PP_TX_SWAP_IQ=1.
+    // RX checked against external LTE; the combined mapping preserves CODEC loopback.
+    bool get_rx_iq_swap() override { return !_e310; }
     digital_interface_delays_t get_digital_interface_timing() override
     {
         digital_interface_delays_t delays;

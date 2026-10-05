@@ -1,0 +1,200 @@
+diff --git a/lib/examples/cell_search.c b/lib/examples/cell_search.c
+index 68b49d4..f54beff 100644
+--- a/lib/examples/cell_search.c
++++ b/lib/examples/cell_search.c
+@@ -205,6 +205,7 @@ int main(int argc, char** argv)
+   }
+ 
+   for (freq = 0; freq < nof_freqs && !go_exit; freq++) {
++    srsran_rf_stop_rx_stream(&rf);
+     /* set rf_freq */
+     srsran_rf_set_rx_freq(&rf, 0, (double)channels[freq].fd * MHZ);
+     INFO("Set rf_freq to %.3f MHz", (double)channels[freq].fd * MHZ / 1000000);
+@@ -231,15 +232,38 @@ int main(int argc, char** argv)
+     } else if (n > 0) {
+       for (int i = 0; i < 3; i++) {
+         if (found_cells[i].psr > 2.0) {
+-          srsran_cell_t cell;
++          srsran_cell_t cell = {0};
+           cell.id = found_cells[i].cell_id;
+           cell.cp = found_cells[i].cp;
++          cell.frame_type = found_cells[i].frame_type;
++          printf("PSS candidate PCI=%u PSR=%.2f CFO=%.1f Hz type=%s\n",
++                 cell.id, found_cells[i].psr, found_cells[i].cfo,
++                 cell.frame_type == SRSRAN_FDD ? "FDD" : "TDD");
+           int ret = rf_mib_decoder(&rf, 1, &cell_detect_config, &cell, NULL);
+           if (ret < 0) {
+             ERROR("Error decoding MIB");
+             exit(-1);
+           }
++          if (ret == SRSRAN_UE_MIB_FOUND && !srsran_cell_isvalid(&cell)) {
++            printf("Rejected invalid MIB: PCI=%u PRB=%u ports=%u\n", cell.id, cell.nof_prb, cell.nof_ports);
++            ret = SRSRAN_UE_MIB_NOTFOUND;
++          }
++          if (ret == SRSRAN_UE_MIB_FOUND) {
++            srsran_cell_t verify = cell;
++            for (int repeat = 0; repeat < 2; repeat++) {
++              int again = rf_mib_decoder(&rf, 1, &cell_detect_config, &verify, NULL);
++              if (again != SRSRAN_UE_MIB_FOUND || !srsran_cell_isvalid(&verify) ||
++                  verify.nof_prb != cell.nof_prb || verify.nof_ports != cell.nof_ports ||
++                  verify.phich_length != cell.phich_length || verify.phich_resources != cell.phich_resources) {
++                printf("Rejected non-repeatable MIB: PCI=%u first=%u/%u repeat=%u/%u status=%d\n",
++                       cell.id, cell.nof_prb, cell.nof_ports, verify.nof_prb, verify.nof_ports, again);
++                ret = SRSRAN_UE_MIB_NOTFOUND;
++                break;
++              }
++            }
++          }
+           if (ret == SRSRAN_UE_MIB_FOUND) {
++            printf("Confirmed 3 matching MIB decodes.\n");
+             printf("Found CELL ID %d. %d PRB, %d ports\n", cell.id, cell.nof_prb, cell.nof_ports);
+             if (cell.nof_ports > 0) {
+               results[n_found_cells].cell      = cell;
+diff --git a/lib/examples/pdsch_ue.c b/lib/examples/pdsch_ue.c
+index 0e8d3a2..6095957 100644
+--- a/lib/examples/pdsch_ue.c
++++ b/lib/examples/pdsch_ue.c
+@@ -20,9 +20,11 @@
+  */
+ 
+ #include <assert.h>
++#include <inttypes.h>
+ #include <math.h>
+ #include <pthread.h>
+ #include <semaphore.h>
++#include <stdatomic.h>
+ #include <signal.h>
+ #include <stdio.h>
+ #include <stdlib.h>
+@@ -376,6 +378,21 @@ srsran_ue_sync_t   ue_sync;
+ prog_args_t        prog_args;
+ 
+ uint32_t pkt_errors = 0, pkt_total = 0, nof_detected = 0, pmch_pkt_errors = 0, pmch_pkt_total = 0, nof_trials = 0;
++static uint64_t cumulative_blocks, cumulative_errors;
++#ifndef DISABLE_RF
++static atomic_uint rx_overflows, rx_late, rx_other_errors;
++static void receive_error_counter(void* opaque, srsran_rf_error_t error)
++{
++  (void)opaque;
++  if (error.type == SRSRAN_RF_ERROR_OVERFLOW) {
++    atomic_fetch_add(&rx_overflows, 1);
++  } else if (error.type == SRSRAN_RF_ERROR_LATE) {
++    atomic_fetch_add(&rx_late, 1);
++  } else {
++    atomic_fetch_add(&rx_other_errors, 1);
++  }
++}
++#endif
+ 
+ srsran_netsink_t net_sink, net_sink_signal;
+ /* Useful macros for printing lines which will disappear */
+@@ -466,6 +483,7 @@ int main(int argc, char** argv)
+       fprintf(stderr, "Error opening rf\n");
+       exit(-1);
+     }
++    srsran_rf_register_error_handler(&rf, receive_error_counter, NULL);
+     /* Set receiver gain */
+     if (prog_args.rf_gain > 0) {
+       srsran_rf_set_rx_gain(&rf, prog_args.rf_gain);
+@@ -805,12 +823,14 @@ int main(int argc, char** argv)
+                       if (!acks[tb]) {
+                         if (sf_type == SRSRAN_SF_NORM) {
+                           pkt_errors++;
++                          cumulative_errors++;
+                         } else {
+                           pmch_pkt_errors++;
+                         }
+                       }
+                       if (sf_type == SRSRAN_SF_NORM) {
+                         pkt_total++;
++                        cumulative_blocks++;
+                       } else {
+                         pmch_pkt_total++;
+                       }
+@@ -1015,6 +1035,11 @@ int main(int argc, char** argv)
+   }
+ #endif
+ 
++#ifndef DISABLE_RF
++  printf("RX_DIAGNOSTICS overflow=%u late=%u other=%u\n",
++         atomic_load(&rx_overflows), atomic_load(&rx_late), atomic_load(&rx_other_errors));
++#endif
++  printf("PDSCH_TOTAL blocks=%" PRIu64 " errors=%" PRIu64 "\n", cumulative_blocks, cumulative_errors);
+   printf("\nBye\n");
+   exit(0);
+ }
+diff --git a/lib/src/phy/rf/rf_uhd_imp.cc b/lib/src/phy/rf/rf_uhd_imp.cc
+index f1ad4df..6c46cc9 100644
+--- a/lib/src/phy/rf/rf_uhd_imp.cc
++++ b/lib/src/phy/rf/rf_uhd_imp.cc
+@@ -147,6 +147,8 @@ struct rf_uhd_handler_t {
+   double                                  tx_rate             = 1.92e6;
+   double                                  rx_rate             = 1.92e6;
+   bool                                    dynamic_master_rate = true;
++  bool                                    rx_only = false;
++  bool                                    rx_conjugate = false;
+   uint32_t                                nof_rx_channels     = 0;
+   uint32_t                                nof_tx_channels     = 0;
+   std::array<double, SRSRAN_MAX_CHANNELS> tx_freq             = {};
+@@ -623,6 +625,10 @@ static int uhd_init(rf_uhd_handler_t* handler, char* args, uint32_t nof_channels
+ 
+   // Parse args into dictionary
+   uhd::device_addr_t device_addr((std::string(args)));
++  handler->rx_conjugate = device_addr.cast<bool>("rx_conjugate", false);
++  if (device_addr.has_key("rx_conjugate")) device_addr.pop("rx_conjugate");
++  handler->rx_only = device_addr.cast<bool>("rx_only", false);
++  if (device_addr.has_key("rx_only")) device_addr.pop("rx_only");
+ 
+   // Initialize handler
+   handler->uhd_error_handler = nullptr;
+@@ -833,7 +839,7 @@ static int uhd_init(rf_uhd_handler_t* handler, char* args, uint32_t nof_channels
+     return SRSRAN_ERROR;
+   }
+ 
+-  if (handler->uhd->get_tx_stream(handler->tx_nof_samples) != UHD_ERROR_NONE) {
++  if (!handler->rx_only && handler->uhd->get_tx_stream(handler->tx_nof_samples) != UHD_ERROR_NONE) {
+     return SRSRAN_ERROR;
+   }
+ 
+@@ -894,7 +900,7 @@ static int uhd_init(rf_uhd_handler_t* handler, char* args, uint32_t nof_channels
+   }
+ 
+ #if HAVE_ASYNC_THREAD
+-  if (start_async_thread) {
++  if (start_async_thread && !handler->rx_only) {
+     // Start low priority thread to receive async commands
+     handler->async_thread_running = true;
+     handler->async_thread         = std::thread(async_thread, handler);
+@@ -1044,6 +1050,7 @@ double rf_uhd_set_rx_srate(void* h, double freq)
+ double rf_uhd_set_tx_srate(void* h, double freq)
+ {
+   rf_uhd_handler_t* handler = (rf_uhd_handler_t*)h;
++  if (handler->rx_only) return SRSRAN_ERROR;
+   // Locking order should be kept the same with the async worker.
+ #if HAVE_ASYNC_THREAD
+   std::unique_lock<std::mutex> lock_async(handler->async_mutex);
+@@ -1082,7 +1089,7 @@ double rf_uhd_set_tx_srate(void* h, double freq)
+   }
+ 
+   if (RF_UHD_IMP_PROHIBITED_STREAM_REMAKE.count(handler->devname) == 0) {
+-    if (handler->uhd->get_tx_stream(handler->tx_nof_samples) != UHD_ERROR_NONE) {
++    if (!handler->rx_only && handler->uhd->get_tx_stream(handler->tx_nof_samples) != UHD_ERROR_NONE) {
+       return SRSRAN_ERROR;
+     }
+   }
+@@ -1355,6 +1362,15 @@ int rf_uhd_recv_with_time_multi(void*    h,
+     return SRSRAN_ERROR;
+   }
+ 
++  // Optional diagnostic correction for mirrored receive spectra.
++  if (handler->rx_conjugate) {
++    for (uint32_t channel = 0; channel < handler->nof_rx_channels; channel++) {
++      if (data[channel] != nullptr) {
++        auto* samples = reinterpret_cast<std::complex<float>*>(data[channel]);
++        for (size_t i = 0; i < rxd_samples_total; i++) samples[i] = std::conj(samples[i]);
++      }
++    }
++  }
+   ret = rxd_samples_total;
+ 
+   // Set timestamp if provided

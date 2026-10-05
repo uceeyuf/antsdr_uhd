@@ -7,7 +7,8 @@ int main() {
     antsdr_ad9361_client_t old(true), legacy;
     CHECK(old.get_digital_interface_mode()==AD9361_DDR_FDD_LVDS);
     CHECK(legacy.get_digital_interface_mode()==AD9361_DDR_FDD_LVCMOS);
-    CHECK(!old.get_tx_iq_swap() && legacy.get_tx_iq_swap());
+    CHECK(!old.get_rx_iq_swap() && legacy.get_rx_iq_swap());
+    CHECK(old.get_tx_iq_swap() && legacy.get_tx_iq_swap());
     CHECK(old.get_band_edge(AD9361_RX_BAND0)==0);
     CHECK(3e9 < old.get_band_edge(AD9361_RX_BAND1));
     CHECK(3.1e9 >= old.get_band_edge(AD9361_RX_BAND1));

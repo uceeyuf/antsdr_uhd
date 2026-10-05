@@ -1655,8 +1655,9 @@ void ad9361_device_t::initialize()
         } break;
 
         case AD9361_DDR_FDD_LVDS: {
-            _io_iface->poke8(0x010, 0x4c | (_client_params->get_tx_iq_swap() ? 0x80 : 0));
-            // RX IQ swap, board-specific TX IQ swap, 2R2T timing.
+            _io_iface->poke8(0x010, 0x0c | (_client_params->get_rx_iq_swap() ? 0x40 : 0)
+                            | (_client_params->get_tx_iq_swap() ? 0x80 : 0));
+            // Board-specific RX/TX IQ order, 2R2T timing.
             _io_iface->poke8(0x011, 0x00);
             _io_iface->poke8(0x012, 0x10);
 
@@ -2066,13 +2067,15 @@ void ad9361_device_t::set_timing_mode(const ad9361_device_t::timing_mode_t timin
         case AD9361_DDR_FDD_LVDS: {
             switch (timing_mode) {
                 case TIMING_MODE_1R1T: {
-                    _io_iface->poke8(0x010, 0x48 | (_client_params->get_tx_iq_swap() ? 0x80 : 0));
-                    // RX IQ swap, board-specific TX IQ swap, 1R1T timing.
+                    _io_iface->poke8(0x010, 0x08 | (_client_params->get_rx_iq_swap() ? 0x40 : 0)
+                                    | (_client_params->get_tx_iq_swap() ? 0x80 : 0));
+                    // Board-specific RX/TX IQ order, 1R1T timing.
                     break;
                 }
                 case TIMING_MODE_2R2T: {
-                    _io_iface->poke8(0x010, 0x4c | (_client_params->get_tx_iq_swap() ? 0x80 : 0));
-                    // RX IQ swap, board-specific TX IQ swap, 2R2T timing.
+                    _io_iface->poke8(0x010, 0x0c | (_client_params->get_rx_iq_swap() ? 0x40 : 0)
+                                    | (_client_params->get_tx_iq_swap() ? 0x80 : 0));
+                    // Board-specific RX/TX IQ order, 2R2T timing.
                     break;
                 }
                 default:

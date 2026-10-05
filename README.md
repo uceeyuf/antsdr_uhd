@@ -36,7 +36,7 @@ This fork adds **[antsdr_e310](./firmware/fpga/antsdr_e310/README.md)**: UHD on 
 | **`sc16`** | **7.68 MS/s** | **5 s** | **2,398,400** | **0** |
 | **`sc8`** | **15.36 MS/s** | **3 s** | **2,878,400** | **0** |
 
-All listed runs had zero RX/TX transport errors and timestamp gaps. QPSK uses 32 samples per symbol and one fixed alignment; the count is checked symbol bits, not every raw ADC bit. `sc8` halves the network payload by reducing the wire precision. These are short digital tests: 15.36 MS/s `sc16` duplex still overflows/underflows, and RF loopback and a complete LTE cell have not been tested.
+All listed runs had zero RX/TX transport errors and timestamp gaps. QPSK uses 32 samples per symbol and one fixed alignment; the count is checked symbol bits, not every raw ADC bit. `sc8` halves the network payload by reducing the wire precision. These are short digital tests: 15.36 MS/s `sc16` duplex still overflows/underflows, and RF loopback and an E310-backed LTE cell have not been tested. [LTE broadcast reception and a separate software-USIM/ZMQ attach](./firmware/fpga/antsdr_e310/docs/lte-receive.md) now work; native RX I/Q ordering is corrected, with residual broadcast decoding errors still under investigation.
 
 Build, board constraints and bring-up: [firmware/fpga/antsdr_e310](./firmware/fpga/antsdr_e310/README.md) (Vivado / Vitis 2020.2). [srsRAN RF API test](./firmware/fpga/antsdr_e310/tests/srsran/README.md), [loopback results](./firmware/fpga/antsdr_e310/docs/2026-10-05-diagnostics.md), [network tuning and logs](./firmware/fpga/antsdr_e310/docs/network-tuning.md). The FPGA build is scripted; a complete SD-card image build remains to be integrated.
 
@@ -111,7 +111,7 @@ Fork 自 [MicroPhase/antsdr_uhd](https://github.com/MicroPhase/antsdr_uhd)：基
 | **`sc16`** | **7.68 MS/s** | **5 秒** | **2,398,400** | **0** |
 | **`sc8`** | **15.36 MS/s** | **3 秒** | **2,878,400** | **0** |
 
-以上各次 RX/TX 传输错误及时间戳断点均为零。QPSK 每符号 32 样本，只确定一次固定对齐；表中为检查的符号比特数，不是全部原始 ADC 比特。`sc8` 通过降低传输位宽将网络负载减半。这些是短时数字测试：15.36 MS/s `sc16` 双向仍有溢出／欠载，射频回环和完整 LTE 小区尚未测试。
+以上各次 RX/TX 传输错误及时间戳断点均为零。QPSK 每符号 32 样本，只确定一次固定对齐；表中为检查的符号比特数，不是全部原始 ADC 比特。`sc8` 通过降低传输位宽将网络负载减半。这些是短时数字测试：15.36 MS/s `sc16` 双向仍有溢出／欠载，射频回环和使用 E310 的完整 LTE 小区尚未测试。[LTE 广播接收与独立的软件 USIM／ZMQ 入网](./firmware/fpga/antsdr_e310/docs/lte-receive.md#cn)已验证；原生 RX I/Q 顺序已修正，广播解码仍有误块，正在排查。
 
 编译、板级约束与启动见 [firmware/fpga/antsdr_e310](./firmware/fpga/antsdr_e310/README.md#cn)（Vivado / Vitis 2020.2）。另见 [srsRAN RF API 测试](./firmware/fpga/antsdr_e310/tests/srsran/README.md#cn)、[回环结果](./firmware/fpga/antsdr_e310/docs/2026-10-05-diagnostics.md#cn)、[网络调参与日志](./firmware/fpga/antsdr_e310/docs/network-tuning.md#cn)。FPGA 可通过脚本重建，完整 SD 卡镜像构建仍待集成。
 
