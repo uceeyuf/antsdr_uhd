@@ -1,0 +1,9 @@
+rx=2048 tx=1024 rx_max=8192 tx_max=4096
+eth0 IRQ 25 affinity=1
+eth1 IRQ 42 affinity=2
+eth1 IRQ 43 affinity=2
+rx=2048 tx=1024 rx_max=8192 tx_max=4096
+rx_frames=24 tx_frames=24
+dma_rx_errors 0
+dma_tx_errors 0
+rx_alloc_fail 0

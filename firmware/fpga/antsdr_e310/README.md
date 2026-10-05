@@ -7,6 +7,8 @@ Experimental board port for single-channel UHD streaming. The target is the orig
 
 Update (2026-10-05): `sc8` duplex at 15.36 MS/s passed the QPSK check. The results below use `sc16` unless stated otherwise. The checker accepts an optional final `sc16|sc8` argument, default `sc16`. See [throughput diagnosis](docs/2026-10-05-diagnostics.md) for the new TX window option and measured limits.
 
+Further network tuning: larger GEM descriptor rings made three 15.36 MS/s `sc16` TX-only runs pass. RX/duplex remains limited. The PL statistics register-access bug is fixed. [Measurements and configuration](docs/network-tuning.md).
+
 ## Reference Revisions
 
 * `uceeyuf/antsdr_uhd`: `b5ebd04a5f405ac3102a772e5d1e8f1be21a7dc3`.
@@ -58,7 +60,7 @@ firmware/fpga/antsdr_e310/build.sh test
 Default Vivado is `/tools/Xilinx/Vivado/2020.2/bin/vivado`; override with `VIVADO`.
 `project` preserves an existing XPR. `synth` reruns synthesis; `place` checks placement; `route` completes routing. `bitstream` checks DRC and constrained setup/hold paths before export. `rebuild` runs synthesis, implementation and export in one Vivado process. `test` runs the DMA Ethernet ARP/backpressure test in XSim and needs XSim's system GCC dependencies.
 
-Reports go to `artifacts/`. `e310_synthesis_only.xsa` has no bitstream; `antsdr_e310_experimental.xsa` includes the routed experimental bitstream. The firmware root Makefile has no E310 release target yet. Full FSBL/U-Boot/Linux/rootfs/BOOT.BIN integration remains open; do not combine this XSA with an E310V2 boot image. Compile the two board C programs with the rootfs's ARM Linux toolchain and install them, `bridge-bringup.sh`, and `tune-network-irqs.sh` into `/sbin`. The bridge script is for initial serial-console bring-up, not automatically enabled by this source tree.
+Reports go to `artifacts/`. `e310_synthesis_only.xsa` has no bitstream; `antsdr_e310_experimental.xsa` includes the routed experimental bitstream. The firmware root Makefile has no E310 release target yet. Full FSBL/U-Boot/Linux/rootfs/BOOT.BIN integration remains open; do not combine this XSA with an E310V2 boot image. Compile the three board C programs with the rootfs's ARM Linux toolchain and install them, `bridge-bringup.sh`, and `tune-network-irqs.sh` into `/sbin`. The bridge script is for initial serial-console bring-up, not automatically enabled by this source tree.
 
 ## Constraints and Remaining Work
 
@@ -113,6 +115,8 @@ UHD 发现、寄存器回环、AD9361 CODEC 数字回环和 srsRAN RF API 收发
 完整 LTE 小区、手机入网和射频回环尚未验证。测试记录见下文。
 
 2026-10-05 更新：15.36 MS/s 的 `sc8` 双向 QPSK 检查通过。下文原有结果如无特别说明均为 `sc16`。检查器新增最后一个可选参数 `sc16|sc8`，默认 `sc16`。新 TX 窗口选项和实测限制见[吞吐定位](docs/2026-10-05-diagnostics.md#cn)。
+
+进一步调参：扩大 GEM 描述符环后，三次 15.36 MS/s `sc16` 仅发测试通过，RX／双向限制仍在；同时修复了 PL 统计寄存器访问异常。[实测与配置](docs/network-tuning.md#cn)。
 
 ## 固定的参考版本
 
@@ -185,7 +189,7 @@ firmware/fpga/antsdr_e310/build.sh test
 
 此阶段尚未把 `e310` 加入固件根 Makefile 的可发布目标。
 FSBL、U-Boot、Linux、rootfs 和 BOOT.BIN 的完整集成仍待完成；不能把此 XSA 和
-E310V2 的启动镜像混用。板端两个 C 程序使用对应 rootfs 的 ARM Linux 工具链编译，
+E310V2 的启动镜像混用。板端三个 C 程序使用对应 rootfs 的 ARM Linux 工具链编译，
 与 `bridge-bringup.sh`、`tune-network-irqs.sh` 一起安装到 `/sbin`。`bridge-bringup.sh` 仅用于串口控制台的首次联调，不会自动执行。
 
 ## 联调范围与未完成事项

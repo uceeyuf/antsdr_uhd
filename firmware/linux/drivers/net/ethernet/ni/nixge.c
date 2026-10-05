@@ -1206,14 +1206,22 @@ static const char nixge_stat_names[][ETH_GSTRING_LEN] = {
 static void nixge_ethtools_get_strings(struct net_device *ndev, u32 stringset,
 				       u8 *data)
 {
-	if (stringset == ETH_SS_STATS)
-		memcpy(data, nixge_stat_names, sizeof(nixge_stat_names));
+	if (stringset == ETH_SS_STATS) {
+		/* The old E310 DMA endpoint has no PL Ethernet MAC counters.
+		 * Reading that register bank causes an external AXI abort.
+		 */
+		unsigned int first = of_machine_is_compatible("microphase,antsdr-e310") ? 4 : 0;
+
+		memcpy(data, &nixge_stat_names[first],
+		       sizeof(nixge_stat_names) - first * ETH_GSTRING_LEN);
+	}
 }
 
 static int nixge_ethtools_get_sset_count(struct net_device *ndev, int sset)
 {
 	if (sset == ETH_SS_STATS)
-		return ARRAY_SIZE(nixge_stat_names);
+		return ARRAY_SIZE(nixge_stat_names) -
+		       (of_machine_is_compatible("microphase,antsdr-e310") ? 4 : 0);
 
 	return -EOPNOTSUPP;
 }
@@ -1223,13 +1231,16 @@ static void nixge_ethtools_get_stats(struct net_device *ndev,
 {
 	struct nixge_priv *priv = netdev_priv(ndev);
 
-	data[0] = nixge_ctrl_read_reg(priv, NIXGE_REG_RX_OVERRUNS);
-	data[1] = nixge_ctrl_read_reg(priv, NIXGE_REG_RX_ERRORS);
-	data[2] = nixge_ctrl_read_reg(priv, NIXGE_REG_PAUSE_TX);
-	data[3] = nixge_ctrl_read_reg(priv, NIXGE_REG_PAUSE_RX);
-	data[4] = priv->dma_rx_errors;
-	data[5] = priv->dma_tx_errors;
-	data[6] = priv->rx_alloc_fail;
+	if (!of_machine_is_compatible("microphase,antsdr-e310")) {
+		data[0] = nixge_ctrl_read_reg(priv, NIXGE_REG_RX_OVERRUNS);
+		data[1] = nixge_ctrl_read_reg(priv, NIXGE_REG_RX_ERRORS);
+		data[2] = nixge_ctrl_read_reg(priv, NIXGE_REG_PAUSE_TX);
+		data[3] = nixge_ctrl_read_reg(priv, NIXGE_REG_PAUSE_RX);
+		data += 4;
+	}
+	data[0] = priv->dma_rx_errors;
+	data[1] = priv->dma_tx_errors;
+	data[2] = priv->rx_alloc_fail;
 }
 
 static void nixge_ethtools_get_pauseparam(struct net_device *ndev,

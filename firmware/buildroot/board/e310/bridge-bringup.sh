@@ -28,6 +28,11 @@ for nic in "$phy" "$dma"; do
     fi
 done
 [ ! -e /sys/class/net/br-uhd ]
+# Configure before opening the interface: changing rings on a live GEM resets
+# the link. Extra descriptors absorb host TX bursts into the Linux bridge.
+if ! /sbin/e310_netdiag rings "$phy" 2048 1024; then
+    echo 'Warning: GEM ring tuning failed; continuing with existing sizes' >&2
+fi
 brctl addbr br-uhd
 brctl stp br-uhd off
 brctl setfd br-uhd 0

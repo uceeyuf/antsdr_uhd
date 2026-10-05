@@ -1,0 +1,16 @@
+[INFO] [UHD] linux; GNU C++ version 13.3.0; Boost_108300; UHD_4.1.0.0-0-unknown
+[INFO] [ANT] Detected Device: ANTSDR
+[INFO] [ANT] Initialize CODEC control...
+[INFO] [ANT] Initialize Radio control...
+[INFO] [ANT] Performing register loopback test...
+[INFO] [ANT] Register loopback test passed
+[INFO] [ANT] Asking for clock rate 30.720000 MHz...
+[INFO] [ANT] Actually got clock rate 30.720000 MHz.
+[INFO] [E310 LOOPBACK] TX/RX digital enabled: 002=4e 003=5e; RF isolation: 056=0c 057=33; attenuation=359/359 x0.25dB; 3f5=01
+[INFO] [E310 LOOPBACK] TX/RX digital enabled: 002=4e 003=5e; RF isolation: 056=0c 057=33; attenuation=359/359 x0.25dB; 3f5=01
+[INFO] [E310 LOOPBACK] TX/RX digital enabled: 002=4e 003=5e; RF isolation: 056=0c 057=33; attenuation=359/359 x0.25dB; 3f5=01
+[INFO] [E310 LOOPBACK] TX/RX digital enabled: 002=4e 003=5e; RF isolation: 056=0c 057=33; attenuation=359/359 x0.25dB; 3f5=01
+mode=codec pattern=qpsk wire_format=sc16 RF_TX=DAC_mixer_powerdown rate=7680000 tx_samples=15392768 rx_samples=15360000 rx_errors=0 timestamp_gaps=0 tx_async_errors=0 burst_acks=1 first_rx_time=0.500006152 startup_latency_us=6.151954172
+qpsk_delay_samples=31 preamble_correlation=0.9999937976 checked_bits=958400 bit_errors=0 gain=1.000024003 decision_evm=0.003554168261
+PASS
+[INFO] [E310 LOOPBACK] Cleanup: TX chains disabled; CODEC loopback off; analog overrides restored.
