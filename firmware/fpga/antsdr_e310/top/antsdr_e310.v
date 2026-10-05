@@ -551,7 +551,7 @@ module antsdr_e310 (
 
 
     eth_internal #(.DWIDTH(REG_DWIDTH), .AWIDTH(REG_AWIDTH),
-        .PORTNUM(SFP_PORTNUM)) net_internal (
+        .PORTNUM(SFP_PORTNUM), .PAD_CHDR_TO_32BIT(1)) net_internal (
         .bus_rst(bus_rst), .bus_clk(bus_clk),
         // Clock and reset
         .s_axi_aclk(reg_clk),

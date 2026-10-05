@@ -91,6 +91,10 @@ All runs had zero RX errors, TX asynchronous errors and timestamp gaps. QPSK sym
 
 Before IRQ splitting, a 5-second 7.68 MS/s duplex diagnostic recorded 40 RX overflows, 947 TX underflows and 42 TX sequence errors, with CPU0 saturated by network softirqs. Splitting the IRQs enabled the passing run above. 15.36 MS/s still fails; the remaining bottleneck is not fully attributed. PS GEM is already 1000 Mbps full duplex, 125 MHz reference clock, MTU 1500. Short tests do not establish long-term stability.
 
+### sc8 UDP tail alignment
+
+Odd-length sc8 packets need word padding in the UDP payload. The E310 top enables this correction; it requires rebuilding the FPGA. See [diagnosis and regression](docs/udp-padding.md).
+
 ### srsRAN RF API
 
 Used srsRAN_4G `bef8680d5f9714f3e040e6f9cbc88d7888439b6d` (25.10.0), building only the RF libraries and linking this fork's UHD. Source and compile instructions: [tests/srsran/README.md](tests/srsran/README.md).
@@ -248,6 +252,11 @@ QPSK 比特，不等价于全部 12 位原始样本的逐位 BER。1.92 MS/s 的
 error 42，CPU0 网络软中断占满；分核后通过上表测试。15.36 MS/s 分核后仍失败，
 具体剩余瓶颈待查。实板 PS GEM 已是 1000 Mbps 全双工，GEM 参考时钟 125 MHz、MTU 1500。
 不能将短时通过结果视为长期吞吐保证。
+
+### sc8 UDP 尾部对齐
+
+奇数样本的 sc8 包需要在 UDP 负载中保留完整的打包字。E310 顶层已启用此修正，
+需要重建 FPGA，见[定位与回归](docs/udp-padding.md#cn)。
 
 ### srsRAN RF API
 

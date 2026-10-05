@@ -1,0 +1,74 @@
+{
+  "date": "2026-10-05",
+  "board": "ANTSDR E310 Micro-USB",
+  "fpga_sha256": "bebd1663916409398a959308ee37360b1018de009e5b1473fc9d8355e2c554c8",
+  "vivado": "2020.2",
+  "timing_ns": {
+    "setup_wns": 1.475,
+    "hold_whs": 0.029,
+    "pulse_width_wpws": 0.264
+  },
+  "drc_errors": 0,
+  "hardware_odd_sample_regression": {
+    "before": "ERROR_CODE_BAD_PACKET",
+    "after": "PASS",
+    "rx_samples": 192001,
+    "bit_errors": 0,
+    "rx_errors": 0,
+    "tx_async_errors": 0,
+    "timestamp_gaps": 0
+  },
+  "lte_after": [
+    {
+      "log": "after-wiener-144718.log",
+      "requested_subframes": 10000,
+      "estimator": "wiener",
+      "rx_gain_db": 35,
+      "sample_rate": 15360000,
+      "wire_format": "sc8",
+      "blocks": 500,
+      "crc_failures": 8,
+      "bler_percent": 1.6,
+      "callbacks": {
+        "overflow": 0,
+        "late": 0,
+        "other": 0
+      },
+      "bad_vrt_exceptions": 0
+    },
+    {
+      "log": "after-interpolate-144732.log",
+      "requested_subframes": 10000,
+      "estimator": "interpolate",
+      "rx_gain_db": 35,
+      "sample_rate": 15360000,
+      "wire_format": "sc8",
+      "blocks": 500,
+      "crc_failures": 4,
+      "bler_percent": 0.8,
+      "callbacks": {
+        "overflow": 0,
+        "late": 0,
+        "other": 0
+      },
+      "bad_vrt_exceptions": 0
+    },
+    {
+      "log": "after-wiener-144746.log",
+      "requested_subframes": 10000,
+      "estimator": "wiener",
+      "rx_gain_db": 35,
+      "sample_rate": 15360000,
+      "wire_format": "sc8",
+      "blocks": 500,
+      "crc_failures": 0,
+      "bler_percent": 0.0,
+      "callbacks": {
+        "overflow": 0,
+        "late": 0,
+        "other": 0
+      },
+      "bad_vrt_exceptions": 0
+    }
+  ]
+}

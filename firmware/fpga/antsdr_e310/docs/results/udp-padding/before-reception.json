@@ -1,0 +1,86 @@
+[
+  {
+    "log": "baseline-sc16-interpolate.log",
+    "blocks": 6,
+    "errors": 1,
+    "bler_percent": 16.666666666666668,
+    "rx_callbacks": [
+      80,
+      0,
+      0
+    ],
+    "bad_vrt_exceptions": 0
+  },
+  {
+    "log": "baseline-sc16-wiener.log",
+    "blocks": 6,
+    "errors": 5,
+    "bler_percent": 83.33333333333333,
+    "rx_callbacks": [
+      79,
+      0,
+      0
+    ],
+    "bad_vrt_exceptions": 0
+  },
+  {
+    "log": "baseline-sc8-interpolate.log",
+    "blocks": 150,
+    "errors": 26,
+    "bler_percent": 17.333333333333332,
+    "rx_callbacks": [
+      0,
+      0,
+      0
+    ],
+    "bad_vrt_exceptions": 0
+  },
+  {
+    "log": "baseline-sc8-wiener.log",
+    "blocks": 150,
+    "errors": 4,
+    "bler_percent": 2.6666666666666665,
+    "rx_callbacks": [
+      0,
+      0,
+      0
+    ],
+    "bad_vrt_exceptions": 0
+  },
+  {
+    "log": "estimate-interpolate-143946.log",
+    "blocks": 499,
+    "errors": 13,
+    "bler_percent": 2.6052104208416833,
+    "rx_callbacks": [
+      0,
+      0,
+      0
+    ],
+    "bad_vrt_exceptions": 1
+  },
+  {
+    "log": "estimate-wiener-143932.log",
+    "blocks": 499,
+    "errors": 8,
+    "bler_percent": 1.6032064128256514,
+    "rx_callbacks": [
+      1,
+      0,
+      0
+    ],
+    "bad_vrt_exceptions": 2
+  },
+  {
+    "log": "estimate-wiener-144000.log",
+    "blocks": 500,
+    "errors": 13,
+    "bler_percent": 2.6,
+    "rx_callbacks": [
+      1,
+      0,
+      0
+    ],
+    "bad_vrt_exceptions": 2
+  }
+]

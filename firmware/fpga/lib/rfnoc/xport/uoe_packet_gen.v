@@ -9,7 +9,7 @@
 // Functions : UDP offload engine packet_generate
 // 			   
 // -----------------------------------------------------------------------------
-module uoe_packet_gen (
+module uoe_packet_gen #(parameter PAD_CHDR_TO_32BIT = 0) (
     input   wire        clk     ,
     input   wire        rst     ,
     input   wire [47:0] my_eth_addr ,
@@ -70,7 +70,12 @@ module uoe_packet_gen (
         ST_IDLE: begin
             if (x2e_tvalid) begin
                 frame_state <= ST_ETH_L0;
-                chdr_len <= chdr_get_length(x2e_tdata); // the tuser has transport length, if udp transport_len = udp_head(8) + chdr_len
+                // CHDR counts sample bytes, but sc8_item32_le packs the final
+                // odd sample in the upper half of a 32-bit word. Preserve that
+                // complete word on UDP; leave the CHDR sample length unchanged.
+                chdr_len <= PAD_CHDR_TO_32BIT ?
+                    ((chdr_get_length(x2e_tdata) + 16'd3) & 16'hfffc) :
+                    chdr_get_length(x2e_tdata);
             end
         end
         ST_CHDR_PAYLOAD: begin

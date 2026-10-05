@@ -50,9 +50,10 @@ proof that every SIB was parsed.
 
 RF callbacks reported zero overflow, late and other errors, but stderr contained
 one `bad vrt header or packet fragment` exception. Those callbacks do not count
-every UHD parser error. The packet error and variable decoding quality remain
-unresolved; neither an lwIP fault nor antenna limitations have been established
-as their cause. The current data path is the Linux GEM/bridge/DMA path.
+every UHD parser error. The packet error was subsequently traced to sc8 UDP tail alignment; see
+[the FPGA correction and regression](udp-padding.md). Variable decoding quality
+remains under investigation; neither an lwIP fault nor antenna limitations have
+been established as its cause. The current data path is the Linux GEM/bridge/DMA path.
 
 The upstream example resets its displayed BLER counters when the 10-bit SFN
 wraps. Our patch adds separate cumulative counters; use `PDSCH_TOTAL`, not the
@@ -146,7 +147,8 @@ RX1 连接普通胶棒天线，确认 **806 MHz、Band 20、EARFCN 6300、PCI 27
 
 RF 回调的 overflow／late／other 均为零，但标准错误日志出现一次
 `bad vrt header or packet fragment`；该类 UHD 解析错误不全部进入 RF 回调。
-坏包与波动的解码质量仍待定位，目前不能归因于 lwIP 或天线。
+坏包随后定位为 sc8 UDP 尾部对齐问题，见[FPGA 修正与回归](udp-padding.md#cn)。
+波动的解码质量仍待定位，目前不能归因于 lwIP 或天线。
 当前数据链路使用 Linux GEM／bridge／DMA。
 
 原示例会在 10 位 SFN 回卷时清零屏幕上的 BLER 计数，补丁另加了不清零的累计计数。

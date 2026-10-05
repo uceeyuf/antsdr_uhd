@@ -1,0 +1,29 @@
+Captured output; trailing whitespace trimmed.
+
+[INFO] [UHD] linux; GNU C++ version 13.3.0; Boost_108300; UHD_4.1.0.0-0-unknown
+[INFO] [LOGGING] Fastpath logging disabled at runtime.
+[INFO] [UHD RF] RF UHD Generic instance constructed
+[INFO] [ANT] Detected Device: ANTSDR
+[INFO] [ANT] Initialize CODEC control...
+[INFO] [ANT] Initialize Radio control...
+[INFO] [ANT] Performing register loopback test...
+[INFO] [ANT] Register loopback test passed
+[INFO] [ANT] Asking for clock rate 30.720000 MHz...
+[INFO] [ANT] Actually got clock rate 30.720000 MHz.
+Active RF plugins: libsrsran_rf_uhd.so libsrsran_rf_zmq.so
+Inactive RF plugins:
+Opening RF device...
+Supported RF device list: UHD zmq file
+Opening USRP channels=1, args: type=ant,addr=192.168.10.3,master_clock_rate=30.72e6
+[  0/1]: EARFCN 6300 Freq. 806.00 MHz looking for PSS.
+PSS candidate PCI=27 PSR=2.99 CFO=1844.5 Hz type=FDD
+Confirmed 3 matching MIB decodes.
+Found CELL ID 27. 50 PRB, 2 ports
+PSS candidate PCI=2 PSR=2.75 CFO=2300.4 Hz type=FDD
+Rejected non-repeatable MIB: PCI=2 first=15/4 repeat=15/4 status=0
+
+
+Found 1 cells
+Found CELL 806.0 MHz, EARFCN=6300, PHYID=27, 50 PRB, 2 ports, PSS power=-30.3 dBm
+
+Bye

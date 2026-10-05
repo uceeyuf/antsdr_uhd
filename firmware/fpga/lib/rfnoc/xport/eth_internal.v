@@ -14,6 +14,7 @@
 
 `default_nettype none
 module eth_internal #(
+  parameter        PAD_CHDR_TO_32BIT = 0,
   parameter        DWIDTH       = 32,
   parameter        AWIDTH       = 14,
   parameter [7:0]  PORTNUM      = 0,
@@ -304,6 +305,7 @@ module eth_internal #(
   );
 
   eth_interface #(
+     .PAD_CHDR_TO_32BIT(PAD_CHDR_TO_32BIT),
      .PROTOVER(RFNOC_PROTOVER),
      .MTU(10),
      .NODE_INST(0),

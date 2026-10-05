@@ -1,0 +1,8 @@
+Selected log lines; screen refreshes omitted.
+Full local log SHA256: 8d67b0681adc5089c4b3028610e584e7800debd1c235152042a605d18b54b0c5
+
+ - PCI:             27
+ - PRB:             50
+Decoded MIB. SFN: 656, offset: 0
+RX_DIAGNOSTICS overflow=0 late=0 other=0
+PDSCH_TOTAL blocks=500 errors=8

@@ -6,6 +6,7 @@
 // Adapts from internal VITA to ethernet packets.  Also handles CPU and ethernet crossover interfaces.
 
 module eth_interface #(
+  parameter        PAD_CHDR_TO_32BIT = 0,
   parameter [15:0] PROTOVER    = {8'd1, 8'd0},
   parameter [31:0] DEFAULT_IP_ADDR_INT   = {8'd192, 8'd168, 8'd1, 8'd10},
   parameter        MTU         = 10,
@@ -228,6 +229,7 @@ module eth_interface #(
   // tuser as used in eth_switch is the numbier of valid bytes
 
   eth_ipv4_chdr64_adapter #(
+    .PAD_CHDR_TO_32BIT(PAD_CHDR_TO_32BIT),
     .PROTOVER        (PROTOVER),
     .MTU             (MTU),
     .CPU_FIFO_SIZE   (MTU),

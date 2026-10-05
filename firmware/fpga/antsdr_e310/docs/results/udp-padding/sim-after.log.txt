@@ -1,0 +1,13 @@
+PASS sc8 samples=1 CHDR=18 UDP payload=20
+PASS sc8 samples=2 CHDR=20 UDP payload=20
+PASS sc8 samples=3 CHDR=22 UDP payload=24
+PASS sc8 samples=4 CHDR=24 UDP payload=24
+PASS sc8 samples=5 CHDR=26 UDP payload=28
+PASS sc8 samples=7 CHDR=30 UDP payload=32
+PASS sc8 samples=11 CHDR=38 UDP payload=40
+PASS sc8 samples=183 CHDR=382 UDP payload=384
+PASS sc8 samples=287 CHDR=590 UDP payload=592
+PASS sc8 samples=509 CHDR=1034 UDP payload=1036
+PASS sc8 samples=716 CHDR=1448 UDP payload=1448
+E310 UDP padding/checksum/sample/backpressure regression PASS
+work/uhd-port/firmware/fpga/antsdr_e310/tests/tb_e310_udp_padding.sv:74: $finish called at 11991000 (1ps)

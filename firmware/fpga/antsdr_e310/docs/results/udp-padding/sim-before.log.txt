@@ -1,0 +1,2 @@
+FATAL: work/uhd-port/firmware/fpga/antsdr_e310/tests/tb_e310_udp_padding.sv:55: UDP padding missing: samples=1 bytes=66 expected=68
+       Time: 261000  Scope: tb_e310_udp_padding.check_packet

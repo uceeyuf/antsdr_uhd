@@ -37,6 +37,7 @@
 
 `default_nettype none
 module eth_ipv4_chdr64_adapter #(
+  parameter        PAD_CHDR_TO_32BIT = 0,
   parameter [15:0] PROTOVER         = {8'd1, 8'd0},
   parameter        MTU              = 10,
   parameter        CPU_FIFO_SIZE    = MTU,
@@ -257,7 +258,7 @@ module eth_ipv4_chdr64_adapter #(
   wire        x2e_framed_tvalid ;
   wire        x2e_framed_tready ;
 
-  uoe_packet_gen u_uoe_packet_gen(
+  uoe_packet_gen #(.PAD_CHDR_TO_32BIT(PAD_CHDR_TO_32BIT)) u_uoe_packet_gen(
       .clk               ( clk               ),
       .rst               ( rst               ),
       .my_eth_addr       ( my_eth_addr       ),

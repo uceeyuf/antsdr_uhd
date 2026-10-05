@@ -1,0 +1,17 @@
+Selected diagnostic lines; no payload omitted within these lines.
+
+length-1.log
+[ERROR] [ANT RX HEADER] received_bytes=960 header=0x318d03c2
+[ERROR] [RX BUFFER] actual_bytes=962
+ValueError: bad vrt header or packet fragment
+[ERROR] [ANT RX HEADER] received_bytes=420 header=0x31e601a6
+[ERROR] [RX BUFFER] actual_bytes=422
+ValueError: bad vrt header or packet fragment
+length-2.log
+[ERROR] [ANT RX HEADER] received_bytes=1032 header=0x318e040a
+[ERROR] [RX BUFFER] actual_bytes=1034
+ValueError: bad vrt header or packet fragment
+length-3.log
+[ERROR] [ANT RX HEADER] received_bytes=588 header=0x318e024e
+[ERROR] [RX BUFFER] actual_bytes=590
+ValueError: bad vrt header or packet fragment
