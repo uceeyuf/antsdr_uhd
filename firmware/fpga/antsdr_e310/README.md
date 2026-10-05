@@ -5,6 +5,8 @@
 
 Experimental board port for single-channel UHD streaming. The target is the original ANTSDR E310 Micro-USB, not the Ettus E310 or ANTSDR E310V2. JTAG bring-up passed an OCM program and a 16 KiB DDR check, then booted Linux with PS GEM, nixge DMA and a bridge. UHD discovery, register loopback, AD9361 digital loopback and srsRAN RF API streaming pass. The highest passing duplex test is 7.68 MS/s for 5 seconds; 15.36 MS/s still underflows/overflows. RF loopback and a complete LTE cell have not been verified.
 
+Update (2026-10-05): `sc8` duplex at 15.36 MS/s passed the QPSK check. The results below use `sc16` unless stated otherwise. The checker accepts an optional final `sc16|sc8` argument, default `sc16`. See [throughput diagnosis](docs/2026-10-05-diagnostics.md) for the new TX window option and measured limits.
+
 ## Reference Revisions
 
 * `uceeyuf/antsdr_uhd`: `b5ebd04a5f405ac3102a772e5d1e8f1be21a7dc3`.
@@ -109,6 +111,8 @@ This commit contains sources and tests. Generated bit/XSA files, JTAG RAM boot p
 UHD 发现、寄存器回环、AD9361 CODEC 数字回环和 srsRAN RF API 收发已通过。
 当前最高通过的双向数字回环测试档位为 7.68 MS/s（5 秒）；15.36 MS/s 仍有欠载／溢出。
 完整 LTE 小区、手机入网和射频回环尚未验证。测试记录见下文。
+
+2026-10-05 更新：15.36 MS/s 的 `sc8` 双向 QPSK 检查通过。下文原有结果如无特别说明均为 `sc16`。检查器新增最后一个可选参数 `sc16|sc8`，默认 `sc16`。新 TX 窗口选项和实测限制见[吞吐定位](docs/2026-10-05-diagnostics.md#cn)。
 
 ## 固定的参考版本
 

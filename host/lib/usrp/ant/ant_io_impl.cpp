@@ -683,7 +683,21 @@ tx_streamer::sptr ant_impl::get_tx_stream(const uhd::stream_args_t& args_)
         // Both ANTSDR-E200 and ANTSDR-E310V2 use the same packet-based Ethernet
         // transmit flow control. The USB B210 transport does not need this
         // path, but all devices instantiated by ant_impl do.
-        const size_t fc_window = _get_tx_flow_control_window(bpp, BUFF_SIZE);
+        size_t fc_window = _get_tx_flow_control_window(bpp, BUFF_SIZE);
+        // Diagnostic tuning for the original E310's PS Ethernet bridge.
+        // Keep the window above the 30-packet credit update interval and no
+        // larger than the existing hardware-buffer-derived limit.
+        if (args.args.has_key("e310_tx_fc_window")) {
+            if (_antsdr_product != antsdr_product_t::E310) {
+                throw uhd::value_error("e310_tx_fc_window requires the original E310");
+            }
+            const size_t requested = args.args.cast<size_t>("e310_tx_fc_window", fc_window);
+            if (requested < 32 || requested > fc_window) {
+                throw uhd::value_error("e310_tx_fc_window must be 32.." + std::to_string(fc_window));
+            }
+            fc_window = requested;
+            UHD_LOGGER_INFO("ANT") << "E310 TX flow-control window: " << fc_window << " packets";
+        }
         perif.deframer->configure_flow_control(0 /* cycles off */, 30);
         boost::shared_ptr<tx_fc_cache_t> fc_cache(new tx_fc_cache_t());
         fc_cache->stream_channel = stream_i;

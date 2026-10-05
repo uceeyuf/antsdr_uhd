@@ -7,7 +7,9 @@
 
 Fork of [MicroPhase/antsdr_uhd](https://github.com/MicroPhase/antsdr_uhd), containing the UHD host driver and ANTSDR firmware derived from Ettus Research's UHD. This branch adds an experimental port for the **original ANTSDR E310 with Micro-USB, Zynq-7020 and AD9361**, using **Vivado 2020.2** and the board design from `antsdr_standalone`. The ANTSDR E310V2 and Ettus USRP E310 are different targets.
 
-Measured on the board: **7.68 MS/s full-duplex AD9361 digital loopback for 5 seconds, 38.4 million received samples, 2,398,400 checked QPSK bits with zero errors, and no RX/TX transport errors or timestamp gaps.** The **srsRAN 4G RF API** also passes a 1.92 MS/s digital loopback through its UHD plugin. **15.36 MS/s still underflows/overflows; an LTE cell, phone attachment and external RF loopback have not been verified.**
+Measured on the board: **7.68 MS/s full-duplex AD9361 digital loopback for 5 seconds, 38.4 million received samples, 2,398,400 checked QPSK bits with zero errors, and no RX/TX transport errors or timestamp gaps.** The **srsRAN 4G RF API** also passes a 1.92 MS/s digital loopback through its UHD plugin. **15.36 MS/s with sc16 still underflows/overflows; an LTE cell, phone attachment and external RF loopback have not been verified.**
+
+Update (2026-10-05): **15.36 MS/s duplex with `sc8` passed a known-QPSK data check** at reduced wire precision. The `sc16` limit remains unresolved. [Bilingual diagnosis and test outputs](firmware/fpga/antsdr_e310/docs/2026-10-05-diagnostics.md).
 
 ## Technical Features
 
@@ -84,7 +86,9 @@ The repository includes the [GNU GPL v3](LICENSE). Individual files and bundled 
 
 本仓库 fork 自 [MicroPhase/antsdr_uhd](https://github.com/MicroPhase/antsdr_uhd)，包含基于 Ettus Research UHD 的主机驱动和 ANTSDR 固件。本分支使用 **Vivado 2020.2**，结合 `antsdr_standalone` 的板级设计，为 **Micro-USB 老款 ANTSDR E310（Zynq-7020 + AD9361）** 增加实验性支持。ANTSDR E310V2 和 Ettus USRP E310 是其他硬件目标。
 
-实板结果：**7.68 MS/s 双向 AD9361 数字回环运行 5 秒，接收 3840 万样本，检查 2,398,400 个 QPSK 比特，零误码，RX/TX 传输错误和时间戳断点均为零。** **srsRAN 4G RF API** 经 UHD 插件的 1.92 MS/s 数字回环也已通过。**15.36 MS/s 仍有欠载／溢出；完整 LTE 小区、手机入网和外部射频回环尚未验证。**
+实板结果：**7.68 MS/s 双向 AD9361 数字回环运行 5 秒，接收 3840 万样本，检查 2,398,400 个 QPSK 比特，零误码，RX/TX 传输错误和时间戳断点均为零。** **srsRAN 4G RF API** 经 UHD 插件的 1.92 MS/s 数字回环也已通过。**15.36 MS/s 的 sc16 仍有欠载／溢出；完整 LTE 小区、手机入网和外部射频回环尚未验证。**
+
+2026-10-05 更新：降低传输位宽后，**15.36 MS/s 的 `sc8` 双向已通过已知 QPSK 数据检查**；`sc16` 的吞吐问题仍未解决。[双语定位记录与测试输出](firmware/fpga/antsdr_e310/docs/2026-10-05-diagnostics.md#cn)。
 
 ## 技术特点
 

@@ -26,8 +26,8 @@ static std::complex<float> qpsk_sample(size_t sample)
 int main(int argc, char** argv)
 {
     try {
-        if (argc < 5 || argc > 8) {
-            std::cerr << "Usage: antsdr_e310_digital_loopback ADDRESS SECONDS TONE_SIGN OUTPUT.fc32 [fpga|codec] [RATE] [tone|qpsk]\n";
+        if (argc < 5 || argc > 9) {
+            std::cerr << "Usage: antsdr_e310_digital_loopback ADDRESS SECONDS TONE_SIGN OUTPUT.fc32 [fpga|codec] [RATE] [tone|qpsk] [sc16|sc8]\n";
             return 2;
         }
         const double seconds = std::stod(argv[2]);
@@ -35,6 +35,9 @@ int main(int argc, char** argv)
         const std::string mode = argc >= 6 ? argv[5] : "fpga";
         const double rate = argc >= 7 ? std::stod(argv[6]) : 1.92e6;
         const std::string pattern = argc >= 8 ? argv[7] : "tone";
+        const std::string wire_format = argc >= 9 ? argv[8] : "sc16";
+        if (wire_format != "sc16" && wire_format != "sc8")
+            throw std::runtime_error("wire format must be sc16 or sc8");
         if (pattern != "tone" && pattern != "qpsk") throw std::runtime_error("invalid pattern");
         if (!(rate >= 1.92e6 && rate <= 15.36e6) || seconds*rate > 60e6)
             throw std::runtime_error("rate must be 1.92..15.36 MSPS; capture at most 60M samples");
@@ -49,7 +52,7 @@ int main(int argc, char** argv)
         usrp->set_tx_rate(rate);
         if (std::abs(usrp->get_rx_rate()-rate)>1 || std::abs(usrp->get_tx_rate()-rate)>1)
             throw std::runtime_error("unexpected sample rate coercion");
-        uhd::stream_args_t args("fc32", "sc16");
+        uhd::stream_args_t args("fc32", wire_format);
         args.channels = {0};
         auto rx = usrp->get_rx_stream(args);
         auto tx = usrp->get_tx_stream(args);
@@ -137,7 +140,7 @@ int main(int argc, char** argv)
         const bool transport_pass = !rx_errors && !gaps && !async_errors && acks == 1
             && startup_us>=0 && startup_us<=100;
         std::cout << std::setprecision(10)
-            << "mode=" << mode << " pattern=" << pattern << " RF_TX="
+            << "mode=" << mode << " pattern=" << pattern << " wire_format=" << wire_format << " RF_TX="
             << (mode == "fpga" ? "chain_disabled" : "DAC_mixer_powerdown") << " rate=" << rate
             << " tx_samples=" << sent << " rx_samples=" << received
             << " rx_errors=" << rx_errors << " timestamp_gaps=" << gaps
