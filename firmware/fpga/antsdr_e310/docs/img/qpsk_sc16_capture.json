@@ -1,0 +1,13 @@
+{
+  "source_capture": "e310-rings-sc16.fc32",
+  "source_samples": 15360000,
+  "sample_rate": 7680000,
+  "wire_format": "sc16",
+  "capture_format": "little-endian complex float32",
+  "loopback": "AD9361 CODEC digital port",
+  "fixed_alignment_samples": 31,
+  "decision_symbols": "512 through 2511",
+  "source_sha256": "2d7d8f6108780316c4ac3a94928b32bdfd25a724d3681c5d4bd123131bb17d70",
+  "date": "2026-10-05",
+  "note": "Measured capture excerpts. No phase correction, fitted gain or rescaling applied to these plotted values."
+}

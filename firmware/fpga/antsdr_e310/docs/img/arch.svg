@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="350" viewBox="0 0 1180 350" role="img" aria-labelledby="title desc">
+<title id="title">Original ANTSDR E310 UHD digital loopback</title>
+<desc id="desc">The Linux host communicates through gigabit Ethernet, the Zynq PS GEM and Linux bridge, PL AXI DMA and UHD DSP, and the LVDS interface with an AD9361 digital loopback. The RF transmit analog path is disabled for this test.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#42566e"/></marker></defs>
+<rect width="1180" height="350" fill="white"/>
+<g font-family="Arial,Helvetica,sans-serif" fill="#223349">
+<text x="30" y="37" font-size="23" font-weight="bold">UHD on the original ANTSDR E310</text>
+<text x="30" y="64" font-size="15" fill="#62758b">Micro-USB board · Zynq-7020 + AD9361 · Vivado 2020.2 · one RX / one TX channel</text>
+<rect x="240" y="93" width="660" height="167" rx="10" fill="#f5f8fc" stroke="#b7c8db"/>
+<text x="260" y="119" font-size="15" font-weight="bold">ZYNQ-7020</text>
+<rect x="30" y="144" width="160" height="86" rx="7" fill="#e9f1ff" stroke="#537fb5"/>
+<rect x="265" y="144" width="190" height="86" rx="7" fill="#e9f1ff" stroke="#537fb5"/>
+<rect x="500" y="144" width="195" height="86" rx="7" fill="#e6f4ef" stroke="#518e79"/>
+<rect x="740" y="144" width="135" height="86" rx="7" fill="#e6f4ef" stroke="#518e79"/>
+<rect x="945" y="130" width="205" height="116" rx="7" fill="#fff2df" stroke="#c18b43"/>
+<g text-anchor="middle" font-size="16">
+<text x="110" y="175" font-weight="bold">Linux host</text><text x="110" y="201" font-size="14">UHD / srsRAN RF</text>
+<text x="360" y="172" font-weight="bold">PS GEM0</text><text x="360" y="198" font-size="14">Linux bridge</text><text x="360" y="218" font-size="12">GEM IRQ → CPU0</text>
+<text x="598" y="172" font-weight="bold">PL AXI DMA</text><text x="598" y="198" font-size="14">UHD DSP + DDR TX FIFO</text><text x="598" y="218" font-size="12">DMA IRQ → CPU1</text>
+<text x="807" y="177" font-weight="bold">LVDS</text><text x="807" y="202" font-size="14">I / Q interface</text>
+<text x="1047" y="163" font-weight="bold">AD9361</text><text x="1047" y="189" font-size="14">digital port loopback</text><text x="1047" y="224" font-size="12">TX DAC / upconverter off</text>
+</g>
+<g stroke="#42566e" stroke-width="2" marker-start="url(#arrow)" marker-end="url(#arrow)"><path d="M198 185H232"/><path d="M463 185H492"/><path d="M703 185H732"/><path d="M883 185H937"/></g>
+<text x="213" y="137" text-anchor="middle" font-size="12">1GbE</text>
+<text x="30" y="294" font-size="16" font-weight="bold">Verified digital duplex: 7.68 MS/s sc16 · 15.36 MS/s sc8</text>
+<text x="30" y="320" font-size="14" fill="#62758b">JTAG RAM boot · Ethernet samples stay in the kernel / FPGA path · RF loopback and a complete LTE cell remain untested</text>
+</g></svg>

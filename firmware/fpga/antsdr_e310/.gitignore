@@ -14,3 +14,5 @@
 !/ip/gen_clks/gen_clks.xci
 # Curated board-test evidence (parent FPGA rules ignore generic .txt files).
 !/docs/results/**/*.txt
+# Small measured capture excerpts used to reproduce the README figure.
+!/docs/img/qpsk_*.csv
