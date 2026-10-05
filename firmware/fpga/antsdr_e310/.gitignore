@@ -12,3 +12,5 @@
 !/ip/axi64_8k_2clk_fifo/axi64_8k_2clk_fifo.xci
 /ip/gen_clks/*
 !/ip/gen_clks/gen_clks.xci
+# Curated board-test evidence (parent FPGA rules ignore generic .txt files).
+!/docs/results/**/*.txt
