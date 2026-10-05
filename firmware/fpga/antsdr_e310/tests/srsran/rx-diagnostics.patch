@@ -1,3 +1,17 @@
+diff --git a/lib/examples/CMakeLists.txt b/lib/examples/CMakeLists.txt
+index d694af8..fe78188 100644
+--- a/lib/examples/CMakeLists.txt
++++ b/lib/examples/CMakeLists.txt
+@@ -22,6 +22,9 @@
+ # Applications
+ #################################################################
+ 
++add_executable(e310_replay_sib1 e310_replay_sib1.c)
++target_link_libraries(e310_replay_sib1 srsran_phy)
++
+ add_executable(synch_file synch_file.c)
+ target_link_libraries(synch_file srsran_phy)
+ 
 diff --git a/lib/examples/cell_search.c b/lib/examples/cell_search.c
 index 68b49d4..f54beff 100644
 --- a/lib/examples/cell_search.c
@@ -51,7 +65,7 @@ index 68b49d4..f54beff 100644
              if (cell.nof_ports > 0) {
                results[n_found_cells].cell      = cell;
 diff --git a/lib/examples/pdsch_ue.c b/lib/examples/pdsch_ue.c
-index 0e8d3a2..e18f8df 100644
+index 0e8d3a2..8c17689 100644
 --- a/lib/examples/pdsch_ue.c
 +++ b/lib/examples/pdsch_ue.c
 @@ -20,9 +20,11 @@
@@ -66,7 +80,15 @@ index 0e8d3a2..e18f8df 100644
  #include <signal.h>
  #include <stdio.h>
  #include <stdlib.h>
-@@ -346,6 +348,17 @@ cf_t* sf_buffer[SRSRAN_MAX_PORTS] = {NULL};
+@@ -34,6 +36,7 @@
+ #include "srsran/common/crash_handler.h"
+ #include "srsran/common/gen_mch_tables.h"
+ #include "srsran/phy/io/filesink.h"
++#include "e310_si_combine.h"
+ #include "srsran/srsran.h"
+ 
+ #define ENABLE_AGC_DEFAULT
+@@ -346,6 +349,17 @@ cf_t* sf_buffer[SRSRAN_MAX_PORTS] = {NULL};
  
  #ifndef DISABLE_RF
  
@@ -84,7 +106,7 @@ index 0e8d3a2..e18f8df 100644
  int srsran_rf_recv_wrapper(void* h, cf_t* data_[SRSRAN_MAX_PORTS], uint32_t nsamples, srsran_timestamp_t* t)
  {
    DEBUG(" ----  Receive %d samples  ----", nsamples);
-@@ -353,7 +366,41 @@ int srsran_rf_recv_wrapper(void* h, cf_t* data_[SRSRAN_MAX_PORTS], uint32_t nsam
+@@ -353,7 +367,41 @@ int srsran_rf_recv_wrapper(void* h, cf_t* data_[SRSRAN_MAX_PORTS], uint32_t nsam
    for (int i = 0; i < SRSRAN_MAX_PORTS; i++) {
      ptr[i] = data_[i];
    }
@@ -127,7 +149,7 @@ index 0e8d3a2..e18f8df 100644
  }
  
  static SRSRAN_AGC_CALLBACK(srsran_rf_set_rx_gain_th_wrapper_)
-@@ -376,6 +423,21 @@ srsran_ue_sync_t   ue_sync;
+@@ -376,6 +424,21 @@ srsran_ue_sync_t   ue_sync;
  prog_args_t        prog_args;
  
  uint32_t pkt_errors = 0, pkt_total = 0, nof_detected = 0, pmch_pkt_errors = 0, pmch_pkt_total = 0, nof_trials = 0;
@@ -149,7 +171,7 @@ index 0e8d3a2..e18f8df 100644
  
  srsran_netsink_t net_sink, net_sink_signal;
  /* Useful macros for printing lines which will disappear */
-@@ -394,6 +456,11 @@ srsran_netsink_t net_sink, net_sink_signal;
+@@ -394,6 +457,11 @@ srsran_netsink_t net_sink, net_sink_signal;
  int main(int argc, char** argv)
  {
    int ret;
@@ -161,7 +183,7 @@ index 0e8d3a2..e18f8df 100644
  
  #ifndef DISABLE_RF
    srsran_rf_t rf;
-@@ -466,6 +533,7 @@ int main(int argc, char** argv)
+@@ -466,6 +534,7 @@ int main(int argc, char** argv)
        fprintf(stderr, "Error opening rf\n");
        exit(-1);
      }
@@ -169,7 +191,7 @@ index 0e8d3a2..e18f8df 100644
      /* Set receiver gain */
      if (prog_args.rf_gain > 0) {
        srsran_rf_set_rx_gain(&rf, prog_args.rf_gain);
-@@ -511,6 +579,7 @@ int main(int argc, char** argv)
+@@ -511,6 +580,7 @@ int main(int argc, char** argv)
      if (srate != -1) {
        printf("Setting rx sampling rate %.2f MHz\n", (float)srate / 1000000);
        float srate_rf = srsran_rf_set_rx_srate(&rf, (double)srate);
@@ -177,7 +199,56 @@ index 0e8d3a2..e18f8df 100644
        if (abs(srate - (int)srate_rf) > MAX_SRATE_DELTA) {
          ERROR("Could not set rx sampling rate : wanted %d got %f", srate, srate_rf);
          exit(-1);
-@@ -688,6 +757,10 @@ int main(int argc, char** argv)
+@@ -684,10 +754,59 @@ int main(int argc, char** argv)
+     srsran_vec_f_zero(sinr[i], SRSRAN_MAX_CODEBOOKS);
+   }
+ 
++  const char* combine_setting = getenv("SRSRAN_SI_COMBINE");
++  if (combine_setting && strcmp(combine_setting, "0") && strcmp(combine_setting, "1")) {
++    fprintf(stderr, "SRSRAN_SI_COMBINE must be 0 or 1\n"); exit(2);
++  }
++  bool combine_si = combine_setting && !strcmp(combine_setting, "1");
++  e310_si_combiner si_combiner;
++  if (combine_si && (prog_args.rnti != SRSRAN_SIRNTI || prog_args.mbsfn_area_id >= 0 ||
++      cell.frame_type != SRSRAN_FDD || cell.cp != SRSRAN_CP_NORM ||
++      e310_si_combiner_init(&si_combiner, cell.nof_prb))) {
++    fprintf(stderr, "SIB1 combining requires normal-CP FDD SI-RNTI without MBSFN\n"); exit(2);
++  }
++  uint8_t combined_payload[16000];
++  uint64_t combine_attempts = 0, combine_errors = 0, combine_recovered = 0, combine_unsupported = 0;
++  unsigned combined_exports = 0;
++  uint64_t rv_blocks[4] = {}, rv_errors[4] = {};
++  uint32_t si_group = UINT32_MAX, si_group_mask = 0;
++  bool si_group_raw_ok = false, si_group_combined_ok = false;
++  uint64_t si_complete_groups = 0, si_partial_groups = 0, si_raw_failed_groups = 0, si_combined_failed_groups = 0;
++
++  // Opt-in bounded SIB1 snapshots, after synchronization/CFO correction and
++  // before channel estimation. Native uint32 + complex-float diagnostic format.
++  FILE* si_capture = NULL;
++  unsigned si_capture_count = 0, si_capture_limit = 0;
++  const char* si_capture_path = getenv("SRSRAN_SI_CAPTURE");
++  if (si_capture_path) {
++    const char* limit = getenv("SRSRAN_SI_CAPTURE_LIMIT");
++    char* end = NULL;
++    unsigned long parsed = limit ? strtoul(limit, &end, 10) : 500;
++    if ((limit && (!*limit || *end)) || parsed == 0 || parsed > 2000 ||
++        prog_args.rf_nof_rx_ant != 1 || prog_args.rnti != SRSRAN_SIRNTI ||
++        prog_args.mbsfn_area_id >= 0 || cell.frame_type != SRSRAN_FDD || cell.cp != SRSRAN_CP_NORM) {
++      fprintf(stderr, "SI capture requires 1..2000 frames, single RX, FDD SI-RNTI without MBSFN\n");
++      exit(2);
++    }
++    si_capture_limit = parsed;
++    si_capture = fopen(si_capture_path, "wbx");
++    uint32_t header[12] = {0x31534945, 1, SRSRAN_SF_LEN_PRB(cell.nof_prb),
++                          cell.id, cell.nof_prb, cell.nof_ports, cell.cp,
++                          cell.phich_length, cell.phich_resources, cell.frame_type,
++                          prog_args.use_standard_lte_rate, prog_args.enable_cfo_ref};
++    if (!si_capture || fwrite(header, sizeof(header), 1, si_capture) != 1) {
++      perror("SI capture header"); exit(2);
++    }
++  }
++
+   /* Main loop */
    uint64_t sf_cnt          = 0;
    uint32_t sfn             = 0;
    uint32_t last_decoded_tm = 0;
@@ -188,7 +259,7 @@ index 0e8d3a2..e18f8df 100644
    while (!go_exit && (sf_cnt < prog_args.nof_subframes || prog_args.nof_subframes == -1)) {
      char input[128];
      PRINT_LINE_INIT();
-@@ -720,8 +793,18 @@ int main(int argc, char** argv)
+@@ -720,8 +839,18 @@ int main(int argc, char** argv)
      }
      ret = srsran_ue_sync_zerocopy(&ue_sync, buffers, max_num_samples);
      if (ret < 0) {
@@ -207,10 +278,30 @@ index 0e8d3a2..e18f8df 100644
  
  #ifdef CORRECT_SAMPLE_OFFSET
      float sample_offset =
-@@ -802,15 +885,27 @@ int main(int argc, char** argv)
+@@ -774,6 +903,14 @@ int main(int argc, char** argv)
+ 
+           gettimeofday(&t[1], NULL);
+           if (decode_pdsch) {
++            bool capture_this = si_capture && si_capture_count < si_capture_limit;
++            uint64_t capture_blocks_before = cumulative_blocks, capture_errors_before = cumulative_errors;
++            if (capture_this &&
++                (fwrite(&tti, sizeof(tti), 1, si_capture) != 1 ||
++                 fwrite(sf_buffer[0], sizeof(cf_t), SRSRAN_SF_LEN_PRB(cell.nof_prb), si_capture) !=
++                     SRSRAN_SF_LEN_PRB(cell.nof_prb))) {
++              perror("SI capture samples"); exit(2);
++            }
+             srsran_sf_t sf_type;
+             if (mch_table[sf_idx] == 0 || prog_args.mbsfn_area_id < 0) { // Not an MBSFN subframe
+               sf_type = SRSRAN_SF_NORM;
+@@ -802,15 +939,32 @@ int main(int argc, char** argv)
                    last_decoded_tm = tm;
                    for (uint32_t tb = 0; tb < SRSRAN_MAX_CODEWORDS; tb++) {
                      if (pdsch_cfg.grant.tb[tb].enabled) {
++                      if (prog_args.rnti == SRSRAN_SIRNTI && sf_type == SRSRAN_SF_NORM &&
++                          pdsch_cfg.grant.tb[tb].rv >= 0 && pdsch_cfg.grant.tb[tb].rv < 4) {
++                        rv_blocks[pdsch_cfg.grant.tb[tb].rv]++;
++                        rv_errors[pdsch_cfg.grant.tb[tb].rv] += !acks[tb];
++                      }
 +                      // Export only CRC-passed SI-RNTI blocks, bounded per run.
 +                      if (dump_si && dumped_si_blocks < 16 && acks[tb] &&
 +                          prog_args.rnti == SRSRAN_SIRNTI && sf_type == SRSRAN_SF_NORM) {
@@ -235,7 +326,61 @@ index 0e8d3a2..e18f8df 100644
                        } else {
                          pmch_pkt_total++;
                        }
-@@ -896,7 +991,7 @@ int main(int argc, char** argv)
+@@ -819,6 +973,53 @@ int main(int argc, char** argv)
+                 }
+               }
+             }
++            bool combined_ok = false;
++            if (combine_si && n > 0) {
++              int combined = e310_si_combiner_run(&si_combiner, &ue_dl, &pdsch_cfg, tti,
++                                                  combined_payload, true, 4);
++              if (combined < 0) {
++                combine_unsupported++;
++              } else {
++                combine_attempts++;
++                combine_errors += !combined;
++                combined_ok = combined == 1;
++                combine_recovered += combined_ok && !acks[0];
++                if (dump_si && combined_exports < 16 && combined_ok && !acks[0]) {
++                  unsigned bytes = (pdsch_cfg.grant.tb[0].tbs + 7) / 8;
++                  printf("SI_COMBINED_PDU tti=%u tb=0 bytes=%u hex=", tti, bytes);
++                  for (unsigned b = 0; b < bytes; b++) printf("%02x", combined_payload[b]);
++                  printf("\n");
++                  fflush(stdout);
++                  combined_exports++;
++                }
++              }
++            }
++            if (prog_args.rnti == SRSRAN_SIRNTI && sf_type == SRSRAN_SF_NORM && tti % 20 == 5) {
++              uint32_t group = tti / 80;
++              if (group != si_group) {
++                if (si_group_mask == 15) {
++                  si_complete_groups++;
++                  si_raw_failed_groups += !si_group_raw_ok;
++                  si_combined_failed_groups += !(si_group_raw_ok || si_group_combined_ok);
++                } else if (si_group_mask) {
++                  si_partial_groups++;
++                }
++                si_group = group;
++                si_group_mask = 0;
++                si_group_raw_ok = si_group_combined_ok = false;
++              }
++              si_group_mask |= 1u << ((tti % 80) / 20);
++              si_group_raw_ok |= n > 0 && (acks[0] || acks[1]);
++              si_group_combined_ok |= combined_ok;
++            }
++            if (capture_this) {
++              uint32_t result[3] = {(uint32_t)n, cumulative_blocks - capture_blocks_before,
++                                    cumulative_errors - capture_errors_before};
++              if (fwrite(result, sizeof(result), 1, si_capture) != 1) {
++                perror("SI capture result"); exit(2);
++              }
++              si_capture_count++;
++            }
+             // Feed-back ue_sync with chest_dl CFO estimation
+             if (sf_idx == 5 && prog_args.enable_cfo_ref) {
+               srsran_ue_sync_set_cfo_ref(&ue_sync, ue_dl.chest_res.cfo);
+@@ -896,7 +1097,7 @@ int main(int argc, char** argv)
            }
  
            // Plot and Printf
@@ -244,7 +389,7 @@ index 0e8d3a2..e18f8df 100644
              float gain = prog_args.rf_gain;
              if (gain < 0) {
                gain = srsran_convert_power_to_dB(srsran_agc_get_gain(&ue_sync.agc));
-@@ -953,7 +1048,7 @@ int main(int argc, char** argv)
+@@ -953,7 +1154,7 @@ int main(int argc, char** argv)
          sfn++;
          if (sfn == 1024) {
            sfn = 0;
@@ -253,7 +398,7 @@ index 0e8d3a2..e18f8df 100644
            pkt_errors      = 0;
            pkt_total       = 0;
            pmch_pkt_errors = 0;
-@@ -971,7 +1066,7 @@ int main(int argc, char** argv)
+@@ -971,7 +1172,7 @@ int main(int argc, char** argv)
        }
  #endif /* ENABLE_GUI */
      } else if (ret == 0) {
@@ -262,7 +407,7 @@ index 0e8d3a2..e18f8df 100644
               srsran_sync_get_peak_value(&ue_sync.sfind),
               ue_sync.frame_total_cnt,
               ue_sync.state);
-@@ -985,6 +1080,18 @@ int main(int argc, char** argv)
+@@ -985,7 +1186,41 @@ int main(int argc, char** argv)
      }
  
      sf_cnt++;
@@ -279,9 +424,32 @@ index 0e8d3a2..e18f8df 100644
 +      report_errors = cumulative_errors;
 +    }
    } // Main loop
++  if (si_group_mask == 15) {
++    si_complete_groups++;
++    si_raw_failed_groups += !si_group_raw_ok;
++    si_combined_failed_groups += !(si_group_raw_ok || si_group_combined_ok);
++  } else if (si_group_mask) {
++    si_partial_groups++;
++  }
++  printf("SIB1_GROUPS complete=%" PRIu64 " partial=%" PRIu64 " raw_failed=%" PRIu64
++         " with_combining_failed=%" PRIu64 " combining_enabled=%u\n", si_complete_groups,
++         si_partial_groups, si_raw_failed_groups, si_combined_failed_groups, combine_si);
++  for (unsigned rv = 0; rv < 4; rv++)
++    printf("SI_RV rv=%u blocks=%" PRIu64 " errors=%" PRIu64 "\n", rv, rv_blocks[rv], rv_errors[rv]);
++  if (combine_si) {
++    printf("SI_COMBINING attempts=%" PRIu64 " errors=%" PRIu64 " recovered=%" PRIu64
++           " unsupported=%" PRIu64 " llr_divisor=4\n", combine_attempts, combine_errors,
++           combine_recovered, combine_unsupported);
++    e310_si_combiner_free(&si_combiner);
++  }
++  if (si_capture) {
++    if (fclose(si_capture)) { perror("SI capture close"); exit(2); }
++    printf("SI_CAPTURE records=%u\n", si_capture_count);
++  }
  
  #ifdef ENABLE_GUI
-@@ -1015,6 +1122,26 @@ int main(int argc, char** argv)
+   if (!prog_args.disable_plots) {
+@@ -1015,6 +1250,26 @@ int main(int argc, char** argv)
    }
  #endif
  
@@ -428,3 +596,232 @@ index f1ad4df..6c46cc9 100644
    ret = rxd_samples_total;
  
    // Set timestamp if provided
+diff --git a/lib/examples/e310_si_combine.h b/lib/examples/e310_si_combine.h
+new file mode 100644
+index 0000000..5b2d3cd
+--- /dev/null
++++ b/lib/examples/e310_si_combine.h
+@@ -0,0 +1,67 @@
++// SPDX-License-Identifier: AGPL-3.0-or-later
++// Bounded experimental SIB1 soft combining for the diagnostic receiver.
++#ifndef E310_SI_COMBINE_H
++#define E310_SI_COMBINE_H
++#include <stdlib.h>
++#include <string.h>
++#include "srsran/srsran.h"
++
++typedef struct {
++  srsran_softbuffer_rx_t soft;
++  uint32_t group, tbs, previous_tti;
++  bool have_previous;
++  int16_t* llr;
++} e310_si_combiner;
++
++static int e310_si_combiner_init(e310_si_combiner* q, uint32_t nof_prb)
++{
++  memset(q, 0, sizeof(*q));
++  if (srsran_softbuffer_rx_init(&q->soft, nof_prb)) return -1;
++  // Maximum QPSK bits in a normal-CP LTE subframe.
++  q->llr = srsran_vec_i16_malloc(100 * 12 * 14 * 2);
++  if (!q->llr) { srsran_softbuffer_rx_free(&q->soft); return -1; }
++  return 0;
++}
++
++// Returns 1 for a fresh CRC pass, 0 for CRC failure, -1 for unsupported input.
++// The normal independent decode has already populated descrambled PDSCH LLRs.
++static int e310_si_combiner_run(e310_si_combiner* q, srsran_ue_dl_t* dl,
++                               srsran_pdsch_cfg_t* cfg, uint32_t tti, uint8_t* payload,
++                               bool combine, unsigned divisor)
++{
++  const srsran_ra_tb_t* tb = &cfg->grant.tb[0];
++  if (dl->cell.frame_type != SRSRAN_FDD || dl->cell.cp != SRSRAN_CP_NORM ||
++      cfg->rnti != SRSRAN_SIRNTI || tti >= 10240 || tti % 20 != 5 ||
++      !tb->enabled || cfg->grant.tb[1].enabled || tb->cw_idx != 0 ||
++      tb->mod != SRSRAN_MOD_QPSK || tb->tbs <= 0 || tb->tbs > 16000 * 8 ||
++      tb->nof_bits == 0 || tb->nof_bits > 100 * 12 * 14 * 2 ||
++      dl->pdsch.llr_is_8bit || divisor == 0 || divisor > 256) {
++    q->have_previous = false;
++    return -1;
++  }
++  uint32_t group = tti / 80;
++  // Do not carry LLRs across an 80 ms boundary, missing occasions or TBS changes.
++  if (!combine || !q->have_previous || q->group != group || q->tbs != (uint32_t)tb->tbs ||
++      (q->previous_tti + 20) % 10240 != tti) {
++    srsran_softbuffer_rx_reset_tbs(&q->soft, tb->tbs);
++  }
++  q->group = group;
++  q->tbs = tb->tbs;
++  q->previous_tti = tti;
++  q->have_previous = true;
++  // Force a fresh turbo/CRC computation; a cached successful block is not a new decode.
++  srsran_softbuffer_rx_reset_cb_crc(&q->soft, q->soft.max_cb);
++  const int16_t* input = dl->pdsch.e[0];
++  for (uint32_t bit = 0; bit < tb->nof_bits; bit++) q->llr[bit] = input[bit] / (int)divisor;
++  srsran_pdsch_cfg_t combined_cfg = *cfg;
++  combined_cfg.softbuffers.rx[0] = &q->soft;
++  return srsran_dlsch_decode2(&dl->pdsch.dl_sch, &combined_cfg, q->llr, payload, 0,
++                              cfg->grant.nof_layers) == SRSRAN_SUCCESS;
++}
++
++static void e310_si_combiner_free(e310_si_combiner* q)
++{
++  srsran_softbuffer_rx_free(&q->soft);
++  free(q->llr);
++}
++#endif
+diff --git a/lib/examples/e310_replay_sib1.c b/lib/examples/e310_replay_sib1.c
+new file mode 100644
+index 0000000..94018e2
+--- /dev/null
++++ b/lib/examples/e310_replay_sib1.c
+@@ -0,0 +1,150 @@
++// SPDX-License-Identifier: AGPL-3.0-or-later
++// Replay synchronized SIB1 snapshots from the patched pdsch_ue receiver.
++#include <errno.h>
++#include <inttypes.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include "srsran/srsran.h"
++#include "e310_si_combine.h"
++
++int main(int argc, char** argv)
++{
++  if (argc < 3 || argc > 5) {
++    fprintf(stderr, "Usage: %s capture.bin {wiener|interpolate|average} [sync_error:0|1] [turbo_iterations:1..16]\n", argv[0]);
++    return 2;
++  }
++  if (strcmp(argv[2], "wiener") && strcmp(argv[2], "interpolate") && strcmp(argv[2], "average")) return 2;
++  bool sync_error = true;
++  if (argc >= 4) {
++    if (strcmp(argv[3], "0") && strcmp(argv[3], "1")) return 2;
++    sync_error = !strcmp(argv[3], "1");
++  }
++  unsigned iterations = 0;
++  if (argc == 5) {
++    char* end = NULL;
++    unsigned long value = strtoul(argv[4], &end, 10);
++    if (!*argv[4] || *end || value == 0 || value > 16) return 2;
++    iterations = value;
++  }
++  const char* correction = getenv("REPLAY_CFO_HZ");
++  float fixed_cfo_hz = 0;
++  if (correction && strcmp(correction, "cp")) {
++    char* end = NULL;
++    fixed_cfo_hz = strtof(correction, &end);
++    if (!*correction || *end || strspn(correction, "0123456789eE+.-") != strlen(correction) || !isfinite(fixed_cfo_hz) || fabsf(fixed_cfo_hz) > 7500) return 2;
++  }
++  const char* boolean_names[] = {"REPLAY_COMBINE", "REPLAY_CSI", "REPLAY_MMSE"};
++  for (unsigned i = 0; i < 3; i++) {
++    const char* value = getenv(boolean_names[i]);
++    if (value && strcmp(value, "0") && strcmp(value, "1")) return 2;
++  }
++  const char* divisor_str = getenv("REPLAY_LLR_DIVISOR");
++  unsigned divisor = 4;
++  if (divisor_str) {
++    char* end = NULL;
++    unsigned long value = strtoul(divisor_str, &end, 10);
++    if (!*divisor_str || *end || value == 0 || value > 256) return 2;
++    divisor = value;
++  }
++  FILE* f = fopen(argv[1], "rb");
++  if (!f) { perror(argv[1]); return 2; }
++  uint32_t h[12];
++  if (fread(h, sizeof(h), 1, f) != 1 || h[0] != 0x31534945 || h[1] != 1 ||
++      h[3] > 503 || h[4] < 6 || h[4] > 100 || (h[5] != 1 && h[5] != 2 && h[5] != 4) ||
++      h[6] != SRSRAN_CP_NORM || h[7] > 1 || h[8] > 3 || h[9] != SRSRAN_FDD || h[10] > 1 || h[11] > 1) {
++    fprintf(stderr, "Invalid/unsupported capture header\n"); return 2;
++  }
++  srsran_use_standard_symbol_size(h[10]);
++  if (h[2] != SRSRAN_SF_LEN_PRB(h[4])) return 2;
++  srsran_cell_t cell = {.id=h[3], .nof_prb=h[4], .nof_ports=h[5], .cp=h[6],
++                        .phich_length=h[7], .phich_resources=h[8], .frame_type=h[9]};
++  if (!srsran_cell_isvalid(&cell)) return 2;
++  cf_t* buffers[SRSRAN_MAX_PORTS] = {srsran_vec_cf_malloc(h[2])};
++  srsran_ue_dl_t dl = {};
++  if (!buffers[0] || srsran_ue_dl_init(&dl, buffers, cell.nof_prb, 1) || srsran_ue_dl_set_cell(&dl, cell)) return 2;
++  srsran_ue_dl_cfg_t cfg = {};
++  cfg.chest_cfg.cfo_estimate_enable = true;
++  cfg.chest_cfg.cfo_estimate_sf_mask = 1023;
++  cfg.chest_cfg.estimator_alg = srsran_chest_dl_str2estimator_alg(argv[2]);
++  cfg.chest_cfg.sync_error_enable = sync_error;
++  srsran_pdsch_cfg_t pdsch = {.rnti=SRSRAN_SIRNTI, .meas_evm_en=true, .max_nof_iterations=iterations};
++  pdsch.csi_enable = getenv("REPLAY_CSI") && !strcmp(getenv("REPLAY_CSI"), "1");
++  if (getenv("REPLAY_MMSE") && !strcmp(getenv("REPLAY_MMSE"), "1")) pdsch.decoder_type = SRSRAN_MIMO_DECODER_MMSE;
++  srsran_softbuffer_rx_t soft[SRSRAN_MAX_CODEWORDS] = {};
++  uint8_t* data[SRSRAN_MAX_CODEWORDS] = {};
++  for (unsigned i=0; i<SRSRAN_MAX_CODEWORDS; i++) {
++    data[i] = srsran_vec_u8_malloc(16000);
++    pdsch.softbuffers.rx[i] = &soft[i];
++    if (!data[i] || srsran_softbuffer_rx_init(&soft[i], cell.nof_prb)) return 2;
++  }
++  bool combine = getenv("REPLAY_COMBINE") && !strcmp(getenv("REPLAY_COMBINE"), "1");
++  e310_si_combiner combiner;
++  if (e310_si_combiner_init(&combiner, cell.nof_prb)) return 2;
++  uint8_t combined_data[16000];
++  uint64_t combined_attempts = 0, combined_errors = 0, combined_recovered = 0;
++  uint64_t records=0, blocks=0, errors=0, no_dci=0, mismatch=0;
++  uint64_t original_blocks=0, original_errors=0;
++  for (;;) {
++    uint32_t tti, expected[3];
++    size_t got=fread(&tti, 1, sizeof(tti), f);
++    if (got==0 && feof(f)) break;
++    if (got!=sizeof(tti) || tti>=10240 || tti%20!=5 ||
++        fread(buffers[0], sizeof(cf_t), h[2], f)!=h[2] ||
++        fread(expected, sizeof(expected), 1, f)!=1) {
++      fprintf(stderr,"Truncated/invalid record at %" PRIu64 "\n",records); return 2;
++    }
++    float cfo_hz = fixed_cfo_hz;
++    if (correction && !strcmp(correction, "cp")) {
++      cf_t sum = 0;
++      unsigned fft = srsran_symbol_sz(cell.nof_prb), offset = 0;
++      for (unsigned symbol = 0; symbol < 14; symbol++) {
++        unsigned cp = SRSRAN_CP_LEN_NORM(symbol % 7, fft);
++        for (unsigned i = cp / 2; i < cp; i++)
++          sum += buffers[0][offset + i + fft] * conjf(buffers[0][offset + i]);
++        offset += cp + fft;
++      }
++      cfo_hz = cargf(sum) * 15000.0f / (2.0f * M_PI);
++    }
++    if (correction) srsran_vec_apply_cfo(buffers[0], -cfo_hz / (1000.0f * h[2]), buffers[0], h[2]);
++    bool ack[SRSRAN_MAX_CODEWORDS] = {};
++    srsran_dl_sf_cfg_t sf = {.tti=tti, .sf_type=SRSRAN_SF_NORM};
++    int n=0;
++    unsigned b=0,e=0,tm_used=0;
++    for (unsigned tm=0; tm<4 && !n; tm++) {
++      cfg.cfg.tm=(srsran_tm_t)tm;
++      if ((tm==SRSRAN_TM1 && cell.nof_ports==1) || (tm>SRSRAN_TM1 && cell.nof_ports>1)) {
++        n=srsran_ue_dl_find_and_decode(&dl, &sf, &cfg, &pdsch, data, ack);
++        tm_used=tm;
++        if (n>0) for(unsigned tb=0;tb<SRSRAN_MAX_CODEWORDS;tb++) if(pdsch.grant.tb[tb].enabled) { b++; e+=!ack[tb]; }
++      }
++    }
++    if (getenv("REPLAY_COMBINE") && n > 0 && pdsch.grant.tb[0].enabled && !pdsch.grant.tb[1].enabled) {
++      int cr = e310_si_combiner_run(&combiner, &dl, &pdsch, tti, combined_data, combine, divisor);
++      if (cr < 0) return 2;
++      combined_attempts++;
++      combined_errors += !cr;
++      combined_recovered += cr && !ack[0];
++      printf("COMBINED_RECORD index=%" PRIu64 " tti=%u crc=%u\n", records, tti, cr);
++    }
++    records++; blocks+=b; errors+=e; no_dci+=n<=0;
++    original_blocks+=expected[1]; original_errors+=expected[2];
++    mismatch+=((uint32_t)n!=expected[0] || b!=expected[1] || e!=expected[2]);
++    printf("REPLAY_RECORD index=%" PRIu64 " tti=%u blocks=%u errors=%u original_blocks=%u original_errors=%u tm=%u rv=%d tbs=%d snr_db=%.3f cfo_norm=%.5f sync0=%.3f sync1=%.3f\n",
++           records-1,tti,b,e,expected[1],expected[2],tm_used+1,
++           n>0?pdsch.grant.tb[0].rv:-1,n>0?pdsch.grant.tb[0].tbs:0,
++           dl.chest_res.snr_db,dl.chest_res.cfo,dl.chest.sync_err[0][0],dl.chest.sync_err[0][1]);
++  }
++  printf("REPLAY_TOTAL estimator=%s sync_error=%u turbo_iterations=%u records=%" PRIu64 " blocks=%" PRIu64 " errors=%" PRIu64
++         " no_dci=%" PRIu64 " original_blocks=%" PRIu64 " original_errors=%" PRIu64 " mismatch_records=%" PRIu64 "\n",
++         argv[2],sync_error,iterations,records,blocks,errors,no_dci,original_blocks,original_errors,mismatch);
++  printf("REPLAY_SETTINGS cfo=%s csi=%u mmse=%u\n", correction ? correction : "none",
++         pdsch.csi_enable, pdsch.decoder_type == SRSRAN_MIMO_DECODER_MMSE);
++  if (getenv("REPLAY_COMBINE")) printf("COMBINED_TOTAL mode=%u llr_divisor=%u attempts=%" PRIu64
++      " errors=%" PRIu64 " recovered=%" PRIu64 "\n", combine, divisor, combined_attempts,
++      combined_errors, combined_recovered);
++  e310_si_combiner_free(&combiner);
++  for(unsigned i=0;i<SRSRAN_MAX_CODEWORDS;i++) { srsran_softbuffer_rx_free(&soft[i]); free(data[i]); }
++  srsran_ue_dl_free(&dl); free(buffers[0]); fclose(f);
++  return records ? 0 : 1;
++}

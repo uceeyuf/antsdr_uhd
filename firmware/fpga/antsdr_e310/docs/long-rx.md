@@ -4,6 +4,10 @@
 
 # Long receive tests and SIB1 decoding
 
+Follow-up: [fixed-input replay and SIB1 soft combining](sib1-combining.md) reduced
+missed complete broadcast periods from 153 to 2 across two later live runs.
+The measurements below precede that optional decoder improvement.
+
 The corrected E310 FPGA received **1,843,206,368 samples at 15.36 MS/s** in a
 120,000-iteration LTE test with no observed timestamp discontinuities, RF error
 callbacks or loss of subframe alignment. Eight initial search iterations preceded
@@ -99,6 +103,9 @@ The direct receiver prints `RX_CONTINUITY`, `SYNC_TOTAL`, `PDSCH_TOTAL`,
 <span id="cn"></span>
 
 # 长时间接收与 SIB1 解析
+
+后续[固定输入回放与 SIB1 软合并](sib1-combining.md#cn)在两次新实测中，将完整广播周期
+全部失败的次数从 153 降至 2。下方为启用这一可选解码改善之前的测量。
 
 修正后的 E310 位流在 120,000 次迭代的 LTE 测试中，以 15.36 MS/s 接收了
 **1,843,206,368 个样本**，未发现时间戳断点、RF 错误回调或子帧失步。

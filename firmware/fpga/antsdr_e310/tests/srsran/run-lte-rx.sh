@@ -21,6 +21,11 @@ mkdir -p -- "$output_parent"
 run_dir=$(mktemp -d "$output_parent/lte-rx.XXXXXX")
 export LD_LIBRARY_PATH="$SRSRAN_BUILD/lib/src/phy/rf:$UHD_BUILD/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 export SRSRAN_RX_COMPACT=1 SRSRAN_DUMP_SI=1
+export SRSRAN_SI_COMBINE=${RX_SI_COMBINE:-1}
+[[ "$SRSRAN_SI_COMBINE" = 0 || "$SRSRAN_SI_COMBINE" = 1 ]] || {
+  echo 'RX_SI_COMBINE must be 0 or 1.' >&2; exit 2;
+}
+printf 'SRSRAN_SI_COMBINE=%s\n' "$SRSRAN_SI_COMBINE" > "$run_dir/settings.txt"
 args="type=ant,addr=${E310_ADDR:-192.168.10.3},master_clock_rate=30.72e6,rx_only=1,otw_format=sc8"
 if [[ -n "${RX_BANDWIDTH_HZ:-}" ]]; then args+=",rx_bandwidth_hz=$RX_BANDWIDTH_HZ"; fi
 options=(-I UHD -a "$args" -f "${RX_FREQ_HZ:-806000000}" -g "${RX_GAIN_DB:-35}"

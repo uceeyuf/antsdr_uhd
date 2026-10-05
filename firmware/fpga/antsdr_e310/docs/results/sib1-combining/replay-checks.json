@@ -1,0 +1,7 @@
+{
+  "baseline_records": 1000,
+  "baseline_mismatches": 0,
+  "fresh_decode_matches": true,
+  "period_boundary_reset_records": 16,
+  "malformed_inputs_rejected": true
+}

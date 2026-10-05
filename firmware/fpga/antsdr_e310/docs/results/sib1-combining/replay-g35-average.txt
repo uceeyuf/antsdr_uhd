@@ -1,0 +1,1 @@
+REPLAY_TOTAL estimator=average sync_error=1 turbo_iterations=0 records=1000 blocks=957 errors=194 no_dci=43 original_blocks=1000 original_errors=200 mismatch_records=288

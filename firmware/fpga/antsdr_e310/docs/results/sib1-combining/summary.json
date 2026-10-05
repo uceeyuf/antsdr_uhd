@@ -1,0 +1,151 @@
+{
+  "date": "2026-10-05",
+  "rf": "RX only, 806 MHz, PCI 27, 50 PRB, two cell ports, one RX channel, sc8 15.36 MS/s",
+  "srsran_commit": "bef8680d5f9714f3e040e6f9cbc88d7888439b6d",
+  "capture_replays": [
+    {
+      "gain_db": 35,
+      "capture_sha256": "7b86c1c0d4188d174a1c651ccfacf984b013da557b85e6ac3afc0a9f71611f4b",
+      "REPLAY_TOTAL": {
+        "estimator": "wiener",
+        "sync_error": "1",
+        "turbo_iterations": "0",
+        "records": "1000",
+        "blocks": "1000",
+        "errors": "200",
+        "no_dci": "0",
+        "original_blocks": "1000",
+        "original_errors": "200",
+        "mismatch_records": "0"
+      },
+      "COMBINED_TOTAL": {
+        "mode": "1",
+        "llr_divisor": "4",
+        "attempts": "1000",
+        "errors": "2",
+        "recovered": "198"
+      }
+    },
+    {
+      "gain_db": 45,
+      "capture_sha256": "6cd96db0d07bf785f5ca1d70e6ba7524f94761fb52e16c0fe9192b03a48349e2",
+      "REPLAY_TOTAL": {
+        "estimator": "wiener",
+        "sync_error": "1",
+        "turbo_iterations": "0",
+        "records": "1000",
+        "blocks": "1000",
+        "errors": "486",
+        "no_dci": "0",
+        "original_blocks": "1000",
+        "original_errors": "486",
+        "mismatch_records": "0"
+      },
+      "COMBINED_TOTAL": {
+        "mode": "1",
+        "llr_divisor": "4",
+        "attempts": "1000",
+        "errors": "6",
+        "recovered": "481"
+      }
+    }
+  ],
+  "live_runs": [
+    {
+      "gain_db": 35,
+      "iterations": 120000,
+      "SIB1_GROUPS": {
+        "complete": "1499",
+        "partial": "1",
+        "raw_failed": "99",
+        "with_combining_failed": "0",
+        "combining_enabled": "1"
+      },
+      "SI_COMBINING": {
+        "attempts": "5987",
+        "errors": "213",
+        "recovered": "1967",
+        "unsupported": "0",
+        "llr_divisor": "4"
+      },
+      "RX_DIAGNOSTICS": {
+        "overflow": "0",
+        "late": "0",
+        "other": "0"
+      },
+      "PDSCH_TOTAL": {
+        "blocks": "5987",
+        "errors": "2172"
+      },
+      "SYNC_TOTAL": {
+        "iterations": "120000",
+        "aligned": "119999",
+        "searching": "1",
+        "errors": "0",
+        "losses": "0",
+        "reacquisitions": "0"
+      },
+      "RX_CONTINUITY": {
+        "samples": "1843205764",
+        "gap_events": "0",
+        "missing_samples": "0",
+        "overlap_samples": "0",
+        "rate": "15360000"
+      }
+    },
+    {
+      "gain_db": 45,
+      "iterations": 60000,
+      "SIB1_GROUPS": {
+        "complete": "749",
+        "partial": "1",
+        "raw_failed": "54",
+        "with_combining_failed": "2",
+        "combining_enabled": "1"
+      },
+      "SI_COMBINING": {
+        "attempts": "2997",
+        "errors": "132",
+        "recovered": "860",
+        "unsupported": "0",
+        "llr_divisor": "4"
+      },
+      "RX_DIAGNOSTICS": {
+        "overflow": "0",
+        "late": "0",
+        "other": "0"
+      },
+      "PDSCH_TOTAL": {
+        "blocks": "2997",
+        "errors": "990"
+      },
+      "SYNC_TOTAL": {
+        "iterations": "60000",
+        "aligned": "59995",
+        "searching": "5",
+        "errors": "0",
+        "losses": "0",
+        "reacquisitions": "0"
+      },
+      "RX_CONTINUITY": {
+        "samples": "921614138",
+        "gap_events": "0",
+        "missing_samples": "0",
+        "overlap_samples": "0",
+        "rate": "15360000"
+      }
+    }
+  ],
+  "limitations": [
+    "Raw independent CRC failures remain; combining is not an RF/transport repair.",
+    "Post-combining attempts use accumulated evidence and are not independent BLER.",
+    "Only complete four-occasion SIB1 periods enter period failure counts.",
+    "No SIB2, phone attach, RF uplink or sustained zero-error claim."
+  ],
+  "export_validation": {
+    "independent_blocks": 32,
+    "recovered_blocks": 32,
+    "unique_sib1_contents": 1,
+    "asn1_failures": 0
+  }
+}

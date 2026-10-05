@@ -59,11 +59,17 @@ has a unique `lte-rx.*` directory; these are ignored by Git.
 
 `SIB1_DECODER` can override the helper path. The decoder accepts one hexadecimal
 CRC-validated transport block and requires a SIB1 ASN.1 message; it does not itself
-check the physical-layer CRC. `decode-si-log.py` processes only opt-in `SI_PDU`
+check the physical-layer CRC. `decode-si-log.py` processes only opt-in `SI_PDU` / `SI_COMBINED_PDU`
 lines exported by the patched receiver after CRC success. A smoke test decoded
 16/16 real blocks with one consistent SIB1, and rejected malformed/truncated helper
 inputs. Full test interpretation and optional gain/CFO/filter controls:
 [long receive tests](../../docs/long-rx.md).
+
+The runner now enables optional SIB1 soft combining (`RX_SI_COMBINE=0` disables it).
+Raw CRC counts are preserved separately from combined results and period delivery.
+Build the patched `e310_replay_sib1` target for offline, fixed-input comparisons.
+Capture/replay commands, input format, controls and measured results:
+[SIB1 soft combining](../../docs/sib1-combining.md).
 
 ---
 
@@ -102,6 +108,11 @@ PASS 要求 TX/RX 数量准确、RF 回调无错误、RX 时间戳连续、
 
 `SIB1_DECODER` 可覆盖辅助程序路径。辅助程序输入十六进制传输块并要求 ASN.1 消息
 为 SIB1，它本身不校验物理层 CRC；`decode-si-log.py` 只处理接收器在 CRC 成功后
-明确导出的 `SI_PDU` 行。整套脚本已实测解析 16/16 个一致的 SIB1；辅助程序也已验证
+明确导出的 `SI_PDU` / `SI_COMBINED_PDU` 行，并区分独立与合并来源。整套脚本已实测解析 16/16 个一致的 SIB1；辅助程序也已验证
 会拒绝格式错误或截断输入。统计含义、增益／频偏／滤波选项和限制见
 [长时间接收](../../docs/long-rx.md#cn)。
+
+新版脚本默认启用可选 SIB1 软合并，`RX_SI_COMBINE=0` 可关闭。
+原始 CRC、合并结果和周期交付分别计数。构建补丁中的 `e310_replay_sib1` 目标，
+即可对固定输入做离线比较。捕获／回放命令、文件格式、开关和实测结果见
+[SIB1 软合并](../../docs/sib1-combining.md#cn)。

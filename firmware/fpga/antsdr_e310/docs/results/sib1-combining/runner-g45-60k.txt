@@ -1,0 +1,17 @@
+RX_PROGRESS iterations=10000 aligned=9995 searching=5 sync_errors=0 losses=0 blocks=499 errors=157 window_blocks=499 window_errors=157 snr_db=3.24 cfo_hz=1004.94
+RX_PROGRESS iterations=20000 aligned=19995 searching=5 sync_errors=0 losses=0 blocks=997 errors=544 window_blocks=498 window_errors=387 snr_db=5.09 cfo_hz=2167.75
+RX_PROGRESS iterations=30000 aligned=29995 searching=5 sync_errors=0 losses=0 blocks=1497 errors=630 window_blocks=500 window_errors=86 snr_db=4.55 cfo_hz=1446.94
+RX_PROGRESS iterations=40000 aligned=39995 searching=5 sync_errors=0 losses=0 blocks=1997 errors=822 window_blocks=500 window_errors=192 snr_db=4.14 cfo_hz=1446.94
+RX_PROGRESS iterations=50000 aligned=49995 searching=5 sync_errors=0 losses=0 blocks=2497 errors=942 window_blocks=500 window_errors=120 snr_db=4.91 cfo_hz=1668.83
+RX_PROGRESS iterations=60000 aligned=59995 searching=5 sync_errors=0 losses=0 blocks=2997 errors=990 window_blocks=500 window_errors=48 snr_db=6.31 cfo_hz=1668.83
+SIB1_GROUPS complete=749 partial=1 raw_failed=54 with_combining_failed=2 combining_enabled=1
+SI_RV rv=0 blocks=749 errors=126
+SI_RV rv=1 blocks=749 errors=399
+SI_RV rv=2 blocks=750 errors=105
+SI_RV rv=3 blocks=749 errors=360
+SI_COMBINING attempts=2997 errors=132 recovered=860 unsupported=0 llr_divisor=4
+RX_DIAGNOSTICS overflow=0 late=0 other=0
+PDSCH_TOTAL blocks=2997 errors=990
+SYNC_TOTAL iterations=60000 aligned=59995 searching=5 errors=0 losses=0 reacquisitions=0
+RX_CONTINUITY samples=921614138 gap_events=0 missing_samples=0 overlap_samples=0 rate=15360000
+RX_LEVEL sampled_complex=936960 rms=0.170842 component_peak=0.882839 near_fullscale_components=0

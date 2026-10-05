@@ -1,0 +1,1 @@
+REPLAY_TOTAL estimator=wiener sync_error=1 turbo_iterations=0 records=1000 blocks=1000 errors=200 no_dci=0 original_blocks=1000 original_errors=200 mismatch_records=0
