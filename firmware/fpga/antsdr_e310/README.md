@@ -3,7 +3,7 @@
 <span id="en">Original ANTSDR E310 Micro-USB: UHD Port</span>
 ===========================
 
-Experimental board port for single-channel UHD streaming. The target is the original ANTSDR E310 Micro-USB, not the Ettus E310 or ANTSDR E310V2. JTAG bring-up passed an OCM program and a 16 KiB DDR check, then booted Linux with PS GEM, nixge DMA and a bridge. UHD discovery, register loopback, AD9361 digital loopback and srsRAN RF API streaming pass. Passing duplex tests reach 7.68 MS/s with `sc16` and 15.36 MS/s with `sc8`; 15.36 MS/s `sc16` duplex still underflows/overflows. RF loopback and an E310-backed LTE cell have not been verified. LTE broadcast reception and a separate software-USIM/ZMQ attach test are now verified; see [LTE receive](docs/lte-receive.md).
+Experimental board port for single-channel UHD streaming. The target is the original ANTSDR E310 Micro-USB, not the Ettus E310 or ANTSDR E310V2. JTAG bring-up passed an OCM program and a 16 KiB DDR check, then booted Linux with PS GEM, nixge DMA and a bridge. UHD discovery, register loopback, AD9361 digital loopback and srsRAN RF API streaming pass. Passing duplex tests reach 7.68 MS/s with `sc16` and 15.36 MS/s with `sc8`; 15.36 MS/s `sc16` duplex still underflows/overflows. RF loopback and an E310-backed LTE cell have not been verified. LTE broadcast reception and a separate software-USIM/ZMQ attach test are now verified; see [LTE receive](docs/lte-receive.md). [Long RX tests and SIB1 parsing](docs/long-rx.md) confirm continuous streaming over two minutes, while broadcast CRC failures remain variable.
 
 Update (2026-10-05): `sc8` duplex at 15.36 MS/s passed the QPSK check. The results below use `sc16` unless stated otherwise. The checker accepts an optional final `sc16|sc8` argument, default `sc16`. See [throughput diagnosis](docs/2026-10-05-diagnostics.md) for the new TX window option and measured limits.
 
@@ -118,6 +118,7 @@ UHD 发现、寄存器回环、AD9361 CODEC 数字回环和 srsRAN RF API 收发
 双向数字回环已通过 `sc16` 7.68 MS/s 和 `sc8` 15.36 MS/s；
 15.36 MS/s 的 `sc16` 双向仍有欠载／溢出。
 使用 E310 的完整 LTE 小区、手机入网和射频回环尚未验证。LTE 广播接收和独立的软件 USIM／ZMQ 入网已通过，见 [LTE 测试](docs/lte-receive.md#cn)。
+[长测与 SIB1 解析](docs/long-rx.md#cn)确认了两分钟连续传输，但广播 CRC 失败率仍有波动。
 
 2026-10-05 更新：15.36 MS/s 的 `sc8` 双向 QPSK 检查通过。下文原有结果如无特别说明均为 `sc16`。检查器新增最后一个可选参数 `sc16|sc8`，默认 `sc16`。新 TX 窗口选项和实测限制见[吞吐定位](docs/2026-10-05-diagnostics.md#cn)。
 

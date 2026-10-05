@@ -51,7 +51,7 @@ index 68b49d4..f54beff 100644
              if (cell.nof_ports > 0) {
                results[n_found_cells].cell      = cell;
 diff --git a/lib/examples/pdsch_ue.c b/lib/examples/pdsch_ue.c
-index 0e8d3a2..6095957 100644
+index 0e8d3a2..e18f8df 100644
 --- a/lib/examples/pdsch_ue.c
 +++ b/lib/examples/pdsch_ue.c
 @@ -20,9 +20,11 @@
@@ -66,7 +66,68 @@ index 0e8d3a2..6095957 100644
  #include <signal.h>
  #include <stdio.h>
  #include <stdlib.h>
-@@ -376,6 +378,21 @@ srsran_ue_sync_t   ue_sync;
+@@ -346,6 +348,17 @@ cf_t* sf_buffer[SRSRAN_MAX_PORTS] = {NULL};
+ 
+ #ifndef DISABLE_RF
+ 
++static double diagnostic_rx_rate;
++static uint64_t diagnostic_receive_calls, diagnostic_level_samples;
++static double diagnostic_level_energy, diagnostic_component_peak;
++static uint64_t diagnostic_near_fullscale_components;
++static uint64_t diagnostic_rx_samples, diagnostic_timestamp_gaps;
++static int64_t diagnostic_missing_samples, diagnostic_overlap_samples;
++static bool diagnostic_have_timestamp;
++static time_t diagnostic_previous_secs;
++static double diagnostic_previous_frac;
++static int diagnostic_previous_samples;
++
+ int srsran_rf_recv_wrapper(void* h, cf_t* data_[SRSRAN_MAX_PORTS], uint32_t nsamples, srsran_timestamp_t* t)
+ {
+   DEBUG(" ----  Receive %d samples  ----", nsamples);
+@@ -353,7 +366,41 @@ int srsran_rf_recv_wrapper(void* h, cf_t* data_[SRSRAN_MAX_PORTS], uint32_t nsam
+   for (int i = 0; i < SRSRAN_MAX_PORTS; i++) {
+     ptr[i] = data_[i];
+   }
+-  return srsran_rf_recv_with_time_multi(h, ptr, nsamples, true, NULL, NULL);
++  time_t secs = 0;
++  double frac = 0.0;
++  int received = srsran_rf_recv_with_time_multi(h, ptr, nsamples, true, &secs, &frac);
++  if (received > 0) {
++    if (t != NULL) {
++      srsran_timestamp_init(t, secs, frac);
++    }
++    if (diagnostic_have_timestamp && diagnostic_rx_rate > 0) {
++      double delta_samples = ((double)(secs - diagnostic_previous_secs) +
++                              frac - diagnostic_previous_frac) * diagnostic_rx_rate -
++                             diagnostic_previous_samples;
++      if (fabs(delta_samples) > 0.51) {
++        diagnostic_timestamp_gaps++;
++        int64_t rounded = llround(delta_samples);
++        if (rounded > 0) diagnostic_missing_samples += rounded;
++        else diagnostic_overlap_samples -= rounded;
++      }
++    }
++    diagnostic_have_timestamp = true;
++    diagnostic_previous_secs = secs;
++    diagnostic_previous_frac = frac;
++    diagnostic_previous_samples = received;
++    diagnostic_rx_samples += received;
++    // Sample one callback per ~1000 calls; do not scan every streaming buffer.
++    if (diagnostic_receive_calls++ % 1000 == 0 && data_[0] != NULL) {
++      for (int i = 0; i < received; i++) {
++        double re = crealf(data_[0][i]), im = cimagf(data_[0][i]);
++        diagnostic_level_energy += re * re + im * im;
++        diagnostic_component_peak = fmax(diagnostic_component_peak, fmax(fabs(re), fabs(im)));
++        diagnostic_near_fullscale_components += (fabs(re) >= 0.99) + (fabs(im) >= 0.99);
++      }
++      diagnostic_level_samples += received;
++    }
++  }
++  return received;
+ }
+ 
+ static SRSRAN_AGC_CALLBACK(srsran_rf_set_rx_gain_th_wrapper_)
+@@ -376,6 +423,21 @@ srsran_ue_sync_t   ue_sync;
  prog_args_t        prog_args;
  
  uint32_t pkt_errors = 0, pkt_total = 0, nof_detected = 0, pmch_pkt_errors = 0, pmch_pkt_total = 0, nof_trials = 0;
@@ -88,7 +149,19 @@ index 0e8d3a2..6095957 100644
  
  srsran_netsink_t net_sink, net_sink_signal;
  /* Useful macros for printing lines which will disappear */
-@@ -466,6 +483,7 @@ int main(int argc, char** argv)
+@@ -394,6 +456,11 @@ srsran_netsink_t net_sink, net_sink_signal;
+ int main(int argc, char** argv)
+ {
+   int ret;
++  const char* compact_env = getenv("SRSRAN_RX_COMPACT");
++  const bool compact_output = compact_env != NULL && strcmp(compact_env, "1") == 0;
++  const char* dump_env = getenv("SRSRAN_DUMP_SI");
++  const bool dump_si = dump_env != NULL && strcmp(dump_env, "1") == 0;
++  unsigned dumped_si_blocks = 0;
+ 
+ #ifndef DISABLE_RF
+   srsran_rf_t rf;
+@@ -466,6 +533,7 @@ int main(int argc, char** argv)
        fprintf(stderr, "Error opening rf\n");
        exit(-1);
      }
@@ -96,7 +169,58 @@ index 0e8d3a2..6095957 100644
      /* Set receiver gain */
      if (prog_args.rf_gain > 0) {
        srsran_rf_set_rx_gain(&rf, prog_args.rf_gain);
-@@ -805,12 +823,14 @@ int main(int argc, char** argv)
+@@ -511,6 +579,7 @@ int main(int argc, char** argv)
+     if (srate != -1) {
+       printf("Setting rx sampling rate %.2f MHz\n", (float)srate / 1000000);
+       float srate_rf = srsran_rf_set_rx_srate(&rf, (double)srate);
++      diagnostic_rx_rate = srate_rf;
+       if (abs(srate - (int)srate_rf) > MAX_SRATE_DELTA) {
+         ERROR("Could not set rx sampling rate : wanted %d got %f", srate, srate_rf);
+         exit(-1);
+@@ -688,6 +757,10 @@ int main(int argc, char** argv)
+   uint64_t sf_cnt          = 0;
+   uint32_t sfn             = 0;
+   uint32_t last_decoded_tm = 0;
++  uint64_t aligned_subframes = 0, searching_iterations = 0, sync_errors = 0;
++  uint64_t sync_losses = 0, reacquisitions = 0;
++  uint64_t report_blocks = 0, report_errors = 0;
++  bool previously_aligned = false, ever_aligned = false;
+   while (!go_exit && (sf_cnt < prog_args.nof_subframes || prog_args.nof_subframes == -1)) {
+     char input[128];
+     PRINT_LINE_INIT();
+@@ -720,8 +793,18 @@ int main(int argc, char** argv)
+     }
+     ret = srsran_ue_sync_zerocopy(&ue_sync, buffers, max_num_samples);
+     if (ret < 0) {
++      sync_errors++;
+       ERROR("Error calling srsran_ue_sync_work()");
+     }
++    if (ret == 1) {
++      aligned_subframes++;
++      if (ever_aligned && !previously_aligned) reacquisitions++;
++      ever_aligned = true;
++    } else {
++      if (ret == 0) searching_iterations++;
++      if (previously_aligned) sync_losses++;
++    }
++    previously_aligned = ret == 1;
+ 
+ #ifdef CORRECT_SAMPLE_OFFSET
+     float sample_offset =
+@@ -802,15 +885,27 @@ int main(int argc, char** argv)
+                   last_decoded_tm = tm;
+                   for (uint32_t tb = 0; tb < SRSRAN_MAX_CODEWORDS; tb++) {
+                     if (pdsch_cfg.grant.tb[tb].enabled) {
++                      // Export only CRC-passed SI-RNTI blocks, bounded per run.
++                      if (dump_si && dumped_si_blocks < 16 && acks[tb] &&
++                          prog_args.rnti == SRSRAN_SIRNTI && sf_type == SRSRAN_SF_NORM) {
++                        unsigned bytes = (pdsch_cfg.grant.tb[tb].tbs + 7) / 8;
++                        printf("SI_PDU tti=%u tb=%u bytes=%u hex=", tti, tb, bytes);
++                        for (unsigned b = 0; b < bytes; b++) printf("%02x", data[tb][b]);
++                        printf("\n");
++                        fflush(stdout);
++                        dumped_si_blocks++;
++                      }
                        if (!acks[tb]) {
                          if (sf_type == SRSRAN_SF_NORM) {
                            pkt_errors++;
@@ -111,7 +235,53 @@ index 0e8d3a2..6095957 100644
                        } else {
                          pmch_pkt_total++;
                        }
-@@ -1015,6 +1035,11 @@ int main(int argc, char** argv)
+@@ -896,7 +991,7 @@ int main(int argc, char** argv)
+           }
+ 
+           // Plot and Printf
+-          if (sf_idx == 5) {
++          if (sf_idx == 5 && !compact_output) {
+             float gain = prog_args.rf_gain;
+             if (gain < 0) {
+               gain = srsran_convert_power_to_dB(srsran_agc_get_gain(&ue_sync.agc));
+@@ -953,7 +1048,7 @@ int main(int argc, char** argv)
+         sfn++;
+         if (sfn == 1024) {
+           sfn = 0;
+-          PRINT_LINE_ADVANCE_CURSOR();
++          if (!compact_output) { PRINT_LINE_ADVANCE_CURSOR(); }
+           pkt_errors      = 0;
+           pkt_total       = 0;
+           pmch_pkt_errors = 0;
+@@ -971,7 +1066,7 @@ int main(int argc, char** argv)
+       }
+ #endif /* ENABLE_GUI */
+     } else if (ret == 0) {
+-      printf("Finding PSS... Peak: %8.1f, FrameCnt: %d, State: %d\r",
++      if (!compact_output) printf("Finding PSS... Peak: %8.1f, FrameCnt: %d, State: %d\r",
+              srsran_sync_get_peak_value(&ue_sync.sfind),
+              ue_sync.frame_total_cnt,
+              ue_sync.state);
+@@ -985,6 +1080,18 @@ int main(int argc, char** argv)
+     }
+ 
+     sf_cnt++;
++    if (compact_output && sf_cnt % 10000 == 0) {
++      printf("RX_PROGRESS iterations=%" PRIu64 " aligned=%" PRIu64 " searching=%" PRIu64
++             " sync_errors=%" PRIu64 " losses=%" PRIu64 " blocks=%" PRIu64
++             " errors=%" PRIu64 " window_blocks=%" PRIu64 " window_errors=%" PRIu64
++             " snr_db=%.2f cfo_hz=%.2f\n",
++             sf_cnt, aligned_subframes, searching_iterations, sync_errors, sync_losses,
++             cumulative_blocks, cumulative_errors, cumulative_blocks - report_blocks,
++             cumulative_errors - report_errors, snr, srsran_ue_sync_get_cfo(&ue_sync));
++      fflush(stdout);
++      report_blocks = cumulative_blocks;
++      report_errors = cumulative_errors;
++    }
+   } // Main loop
+ 
+ #ifdef ENABLE_GUI
+@@ -1015,6 +1122,26 @@ int main(int argc, char** argv)
    }
  #endif
  
@@ -120,9 +290,69 @@ index 0e8d3a2..6095957 100644
 +         atomic_load(&rx_overflows), atomic_load(&rx_late), atomic_load(&rx_other_errors));
 +#endif
 +  printf("PDSCH_TOTAL blocks=%" PRIu64 " errors=%" PRIu64 "\n", cumulative_blocks, cumulative_errors);
++  printf("SYNC_TOTAL iterations=%" PRIu64 " aligned=%" PRIu64 " searching=%" PRIu64
++         " errors=%" PRIu64 " losses=%" PRIu64 " reacquisitions=%" PRIu64 "\n",
++         sf_cnt, aligned_subframes, searching_iterations, sync_errors, sync_losses, reacquisitions);
++#ifndef DISABLE_RF
++  if (!prog_args.input_file_name) {
++    printf("RX_CONTINUITY samples=%" PRIu64 " gap_events=%" PRIu64
++           " missing_samples=%" PRId64 " overlap_samples=%" PRId64 " rate=%.0f\n",
++           diagnostic_rx_samples, diagnostic_timestamp_gaps, diagnostic_missing_samples,
++           diagnostic_overlap_samples, diagnostic_rx_rate);
++    printf("RX_LEVEL sampled_complex=%" PRIu64 " rms=%.6f component_peak=%.6f near_fullscale_components=%" PRIu64 "\n",
++           diagnostic_level_samples,
++           diagnostic_level_samples ? sqrt(diagnostic_level_energy / diagnostic_level_samples) : 0.0,
++           diagnostic_component_peak, diagnostic_near_fullscale_components);
++  }
++#endif
    printf("\nBye\n");
    exit(0);
  }
+diff --git a/lib/src/phy/rf/rf_uhd_generic.h b/lib/src/phy/rf/rf_uhd_generic.h
+index 6039a22..520057a 100644
+--- a/lib/src/phy/rf/rf_uhd_generic.h
++++ b/lib/src/phy/rf/rf_uhd_generic.h
+@@ -60,6 +60,16 @@ private:
+     SRSRAN_UHD_SAFE_C_LOG_ERROR(usrp->set_rx_subdev_spec(string);)
+   }
+ 
++  uhd_error set_diagnostic_rx_bandwidth(double bandwidth, uint32_t nof_channels)
++  {
++    SRSRAN_UHD_SAFE_C_LOG_ERROR(
++      for (uint32_t channel = 0; channel < nof_channels; channel++) {
++        usrp->set_rx_bandwidth(bandwidth, channel);
++        Info("RX analog bandwidth channel " << channel << ": " << usrp->get_rx_bandwidth(channel) << " Hz");
++      }
++    )
++  }
++
+   uhd_error test_ad936x_device(uint32_t nof_channels)
+   {
+     uhd_error err = set_rx_rate(1.92e6);
+@@ -157,6 +167,11 @@ public:
+       otw_format = dev_addr.pop("otw_format");
+     }
+ 
++    // Optional receive-filter diagnostic; zero preserves the UHD default.
++    double rx_bandwidth_hz = dev_addr.cast<double>("rx_bandwidth_hz", 0.0);
++    if (dev_addr.has_key("rx_bandwidth_hz")) dev_addr.pop("rx_bandwidth_hz");
++    if (!std::isfinite(rx_bandwidth_hz) || rx_bandwidth_hz < 0) return UHD_ERROR_VALUE;
++
+     // Samples-Per-Packet option, 0 means automatic
+     std::string spp;
+     if (dev_addr.has_key("spp")) {
+@@ -281,6 +296,11 @@ public:
+       }
+     }
+ 
++    if (rx_bandwidth_hz > 0) {
++      err = set_diagnostic_rx_bandwidth(rx_bandwidth_hz, nof_channels);
++      if (err != UHD_ERROR_NONE) return err;
++    }
++
+     // Initialize TX/RX stream args
+     stream_args.cpu_format = "fc32";
+     stream_args.otw_format = otw_format;
 diff --git a/lib/src/phy/rf/rf_uhd_imp.cc b/lib/src/phy/rf/rf_uhd_imp.cc
 index f1ad4df..6c46cc9 100644
 --- a/lib/src/phy/rf/rf_uhd_imp.cc

@@ -58,3 +58,6 @@ xvlog.pb
 # Python bytecode
 __pycache__/
 *.py[cod]
+
+# Local receive logs and decoded broadcast data
+lte-rx.*/

@@ -1,0 +1,399 @@
+[
+  {
+    "log": "baseline-120k.log",
+    "detected_blocks": 5494,
+    "crc_failures": 1665,
+    "bler_percent": 30.3058,
+    "bad_vrt_exceptions": 0,
+    "rf": {
+      "overflow": 0,
+      "late": 0,
+      "other": 0
+    },
+    "sampled_levels_are_uncalibrated": true
+  },
+  {
+    "log": "bw-10000000-170910.log",
+    "detected_blocks": 1498,
+    "crc_failures": 146,
+    "bler_percent": 9.7463,
+    "bad_vrt_exceptions": 0,
+    "rf": {
+      "overflow": 0,
+      "late": 0,
+      "other": 0
+    },
+    "continuity": {
+      "samples": 460823408,
+      "gap_events": 0,
+      "missing_samples": 0,
+      "overlap_samples": 0,
+      "rate": 15360000
+    },
+    "sync": {
+      "iterations": 30000,
+      "aligned": 29992,
+      "searching": 8,
+      "errors": 0,
+      "losses": 0,
+      "reacquisitions": 0
+    },
+    "levels": {
+      "sampled_complex": 476160,
+      "rms": 0.139153,
+      "component_peak": 0.710959,
+      "near_fullscale_components": 0
+    },
+    "sampled_levels_are_uncalibrated": true
+  },
+  {
+    "log": "bw-10000000-171018.log",
+    "detected_blocks": 1500,
+    "crc_failures": 357,
+    "bler_percent": 23.8,
+    "bad_vrt_exceptions": 0,
+    "rf": {
+      "overflow": 0,
+      "late": 0,
+      "other": 0
+    },
+    "continuity": {
+      "samples": 460824005,
+      "gap_events": 0,
+      "missing_samples": 0,
+      "overlap_samples": 0,
+      "rate": 15360000
+    },
+    "sync": {
+      "iterations": 30000,
+      "aligned": 29994,
+      "searching": 6,
+      "errors": 0,
+      "losses": 0,
+      "reacquisitions": 0
+    },
+    "levels": {
+      "sampled_complex": 476160,
+      "rms": 0.141014,
+      "component_peak": 0.632832,
+      "near_fullscale_components": 0
+    },
+    "sampled_levels_are_uncalibrated": true
+  },
+  {
+    "log": "bw-56000000-170944.log",
+    "detected_blocks": 1500,
+    "crc_failures": 22,
+    "bler_percent": 1.4667,
+    "bad_vrt_exceptions": 0,
+    "rf": {
+      "overflow": 0,
+      "late": 0,
+      "other": 0
+    },
+    "continuity": {
+      "samples": 460824316,
+      "gap_events": 0,
+      "missing_samples": 0,
+      "overlap_samples": 0,
+      "rate": 15360000
+    },
+    "sync": {
+      "iterations": 30000,
+      "aligned": 29993,
+      "searching": 7,
+      "errors": 0,
+      "losses": 0,
+      "reacquisitions": 0
+    },
+    "levels": {
+      "sampled_complex": 476160,
+      "rms": 0.178866,
+      "component_peak": 0.843776,
+      "near_fullscale_components": 0
+    },
+    "sampled_levels_are_uncalibrated": true
+  },
+  {
+    "log": "cfo-pss-170234.log",
+    "detected_blocks": 2999,
+    "crc_failures": 343,
+    "bler_percent": 11.4371,
+    "bad_vrt_exceptions": 0,
+    "rf": {
+      "overflow": 0,
+      "late": 0,
+      "other": 0
+    },
+    "continuity": {
+      "samples": 921609962,
+      "gap_events": 0,
+      "missing_samples": 0,
+      "overlap_samples": 0,
+      "rate": 15360000
+    },
+    "sync": {
+      "iterations": 60000,
+      "aligned": 59994,
+      "searching": 6,
+      "errors": 0,
+      "losses": 0,
+      "reacquisitions": 0
+    },
+    "sampled_levels_are_uncalibrated": true
+  },
+  {
+    "log": "cfo-pss-170441.log",
+    "detected_blocks": 2993,
+    "crc_failures": 615,
+    "bler_percent": 20.5479,
+    "bad_vrt_exceptions": 0,
+    "rf": {
+      "overflow": 0,
+      "late": 0,
+      "other": 0
+    },
+    "continuity": {
+      "samples": 921609540,
+      "gap_events": 0,
+      "missing_samples": 0,
+      "overlap_samples": 0,
+      "rate": 15360000
+    },
+    "sync": {
+      "iterations": 60000,
+      "aligned": 59997,
+      "searching": 3,
+      "errors": 0,
+      "losses": 0,
+      "reacquisitions": 0
+    },
+    "sampled_levels_are_uncalibrated": true
+  },
+  {
+    "log": "cfo-reference-170337.log",
+    "detected_blocks": 2970,
+    "crc_failures": 1249,
+    "bler_percent": 42.0539,
+    "bad_vrt_exceptions": 0,
+    "rf": {
+      "overflow": 0,
+      "late": 0,
+      "other": 0
+    },
+    "continuity": {
+      "samples": 921618881,
+      "gap_events": 0,
+      "missing_samples": 0,
+      "overlap_samples": 0,
+      "rate": 15360000
+    },
+    "sync": {
+      "iterations": 60000,
+      "aligned": 59996,
+      "searching": 4,
+      "errors": 0,
+      "losses": 0,
+      "reacquisitions": 0
+    },
+    "sampled_levels_are_uncalibrated": true
+  },
+  {
+    "log": "gain-35-170608.log",
+    "detected_blocks": 987,
+    "crc_failures": 402,
+    "bler_percent": 40.7295,
+    "bad_vrt_exceptions": 0,
+    "rf": {
+      "overflow": 0,
+      "late": 0,
+      "other": 0
+    },
+    "continuity": {
+      "samples": 307217292,
+      "gap_events": 0,
+      "missing_samples": 0,
+      "overlap_samples": 0,
+      "rate": 15360000
+    },
+    "sync": {
+      "iterations": 20000,
+      "aligned": 19991,
+      "searching": 9,
+      "errors": 0,
+      "losses": 0,
+      "reacquisitions": 0
+    },
+    "levels": {
+      "sampled_complex": 322560,
+      "rms": 0.047086,
+      "component_peak": 0.234382,
+      "near_fullscale_components": 0
+    },
+    "sampled_levels_are_uncalibrated": true
+  },
+  {
+    "log": "gain-35-170744.log",
+    "detected_blocks": 999,
+    "crc_failures": 46,
+    "bler_percent": 4.6046,
+    "bad_vrt_exceptions": 0,
+    "rf": {
+      "overflow": 0,
+      "late": 0,
+      "other": 0
+    },
+    "continuity": {
+      "samples": 307214103,
+      "gap_events": 0,
+      "missing_samples": 0,
+      "overlap_samples": 0,
+      "rate": 15360000
+    },
+    "sync": {
+      "iterations": 20000,
+      "aligned": 19998,
+      "searching": 2,
+      "errors": 0,
+      "losses": 0,
+      "reacquisitions": 0
+    },
+    "levels": {
+      "sampled_complex": 322560,
+      "rms": 0.069207,
+      "component_peak": 0.320322,
+      "near_fullscale_components": 0
+    },
+    "sampled_levels_are_uncalibrated": true
+  },
+  {
+    "log": "gain-45-170632.log",
+    "detected_blocks": 798,
+    "crc_failures": 237,
+    "bler_percent": 29.6992,
+    "bad_vrt_exceptions": 0,
+    "rf": {
+      "overflow": 0,
+      "late": 0,
+      "other": 0
+    },
+    "continuity": {
+      "samples": 307216236,
+      "gap_events": 0,
+      "missing_samples": 0,
+      "overlap_samples": 0,
+      "rate": 15360000
+    },
+    "sync": {
+      "iterations": 20000,
+      "aligned": 19999,
+      "searching": 1,
+      "errors": 0,
+      "losses": 0,
+      "reacquisitions": 0
+    },
+    "levels": {
+      "sampled_complex": 322560,
+      "rms": 0.195718,
+      "component_peak": 0.773461,
+      "near_fullscale_components": 0
+    },
+    "sampled_levels_are_uncalibrated": true
+  },
+  {
+    "log": "gain-45-170721.log",
+    "detected_blocks": 992,
+    "crc_failures": 260,
+    "bler_percent": 26.2097,
+    "bad_vrt_exceptions": 0,
+    "rf": {
+      "overflow": 0,
+      "late": 0,
+      "other": 0
+    },
+    "continuity": {
+      "samples": 307211315,
+      "gap_events": 0,
+      "missing_samples": 0,
+      "overlap_samples": 0,
+      "rate": 15360000
+    },
+    "sync": {
+      "iterations": 20000,
+      "aligned": 19992,
+      "searching": 8,
+      "errors": 0,
+      "losses": 0,
+      "reacquisitions": 0
+    },
+    "levels": {
+      "sampled_complex": 322560,
+      "rms": 0.172747,
+      "component_peak": 0.851588,
+      "near_fullscale_components": 0
+    },
+    "sampled_levels_are_uncalibrated": true
+  },
+  {
+    "log": "gain-55-170656.log",
+    "detected_blocks": 741,
+    "crc_failures": 217,
+    "bler_percent": 29.2848,
+    "bad_vrt_exceptions": 0,
+    "rf": {
+      "overflow": 0,
+      "late": 0,
+      "other": 0
+    },
+    "continuity": {
+      "samples": 307221334,
+      "gap_events": 0,
+      "missing_samples": 0,
+      "overlap_samples": 0,
+      "rate": 15360000
+    },
+    "sync": {
+      "iterations": 20000,
+      "aligned": 19996,
+      "searching": 4,
+      "errors": 0,
+      "losses": 0,
+      "reacquisitions": 0
+    },
+    "levels": {
+      "sampled_complex": 322560,
+      "rms": 0.507527,
+      "component_peak": 1.00003,
+      "near_fullscale_components": 5118
+    },
+    "sampled_levels_are_uncalibrated": true
+  },
+  {
+    "log": "metrics-wiener-g35-120k.log",
+    "detected_blocks": 5329,
+    "crc_failures": 975,
+    "bler_percent": 18.2961,
+    "bad_vrt_exceptions": 0,
+    "rf": {
+      "overflow": 0,
+      "late": 0,
+      "other": 0
+    },
+    "continuity": {
+      "samples": 1843206368,
+      "gap_events": 0,
+      "missing_samples": 0,
+      "overlap_samples": 0,
+      "rate": 15360000
+    },
+    "sync": {
+      "iterations": 120000,
+      "aligned": 119992,
+      "searching": 8,
+      "errors": 0,
+      "losses": 0,
+      "reacquisitions": 0
+    },
+    "sampled_levels_are_uncalibrated": true
+  }
+]

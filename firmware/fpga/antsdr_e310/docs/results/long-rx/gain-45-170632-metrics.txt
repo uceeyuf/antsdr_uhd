@@ -1,0 +1,9 @@
+Diagnostic lines only; RF power is uncalibrated.
+
+RX_PROGRESS iterations=10000 aligned=9999 searching=1 sync_errors=0 losses=0 blocks=500 errors=56 window_blocks=500 window_errors=56 snr_db=4.41 cfo_hz=2575.76
+RX_PROGRESS iterations=20000 aligned=19999 searching=1 sync_errors=0 losses=0 blocks=798 errors=237 window_blocks=298 window_errors=181 snr_db=-1.31 cfo_hz=3583.48
+RX_DIAGNOSTICS overflow=0 late=0 other=0
+PDSCH_TOTAL blocks=798 errors=237
+SYNC_TOTAL iterations=20000 aligned=19999 searching=1 errors=0 losses=0 reacquisitions=0
+RX_CONTINUITY samples=307216236 gap_events=0 missing_samples=0 overlap_samples=0 rate=15360000
+RX_LEVEL sampled_complex=322560 rms=0.195718 component_peak=0.773461 near_fullscale_components=0

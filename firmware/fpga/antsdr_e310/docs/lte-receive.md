@@ -46,7 +46,8 @@ The longer SI-RNTI (`0xffff`) receive test requested 20,000 subframes with
 **1,000 PDSCH transport blocks: 646 CRC passes, 354 failures (35.4%)**.
 This denominator includes detected transport blocks, not all transmitted data
 or missed grants. This is partial broadcast decoding, not a stable LTE link or
-proof that every SIB was parsed.
+proof that every SIB was parsed. A later test decoded SIB1 and checked longer-run
+continuity; see [long RX and SIB1](long-rx.md).
 
 RF callbacks reported zero overflow, late and other errors, but stderr contained
 one `bad vrt header or packet fragment` exception. Those callbacks do not count
@@ -144,6 +145,7 @@ RX1 连接普通胶棒天线，确认 **806 MHz、Band 20、EARFCN 6300、PCI 27
 35 dB 增益与参考信号频偏跟踪。累计检测到 **1,000 个 PDSCH 传输块，646 个 CRC 通过、
 354 个失败，误块率 35.4%**。分母仅包含检测到的块，不包含全部实际发射的数据或漏检授权。
 这是部分广播解码，尚不能称为稳定 LTE 链路，也未证明全部 SIB 已完成解析。
+后续已解析 SIB1 并验证长测连续性，见[长测与 SIB1](long-rx.md#cn)。
 
 RF 回调的 overflow／late／other 均为零，但标准错误日志出现一次
 `bad vrt header or packet fragment`；该类 UHD 解析错误不全部进入 RF 回调。

@@ -1,0 +1,18 @@
+Diagnostic lines only; RF power is uncalibrated.
+
+RX_PROGRESS iterations=10000 aligned=9992 searching=8 sync_errors=0 losses=0 blocks=499 errors=46 window_blocks=499 window_errors=46 snr_db=4.75 cfo_hz=2370.27
+RX_PROGRESS iterations=20000 aligned=19992 searching=8 sync_errors=0 losses=0 blocks=999 errors=63 window_blocks=500 window_errors=17 snr_db=5.03 cfo_hz=2264.87
+RX_PROGRESS iterations=30000 aligned=29992 searching=8 sync_errors=0 losses=0 blocks=1404 errors=118 window_blocks=405 window_errors=55 snr_db=5.13 cfo_hz=1922.34
+RX_PROGRESS iterations=40000 aligned=39992 searching=8 sync_errors=0 losses=0 blocks=1641 errors=187 window_blocks=237 window_errors=69 snr_db=5.39 cfo_hz=2044.09
+RX_PROGRESS iterations=50000 aligned=49992 searching=8 sync_errors=0 losses=0 blocks=2141 errors=242 window_blocks=500 window_errors=55 snr_db=3.77 cfo_hz=1960.65
+RX_PROGRESS iterations=60000 aligned=59992 searching=8 sync_errors=0 losses=0 blocks=2641 errors=322 window_blocks=500 window_errors=80 snr_db=5.35 cfo_hz=1898.91
+RX_PROGRESS iterations=70000 aligned=69992 searching=8 sync_errors=0 losses=0 blocks=3056 errors=425 window_blocks=415 window_errors=103 snr_db=4.82 cfo_hz=1379.22
+RX_PROGRESS iterations=80000 aligned=79992 searching=8 sync_errors=0 losses=0 blocks=3555 errors=530 window_blocks=499 window_errors=105 snr_db=4.02 cfo_hz=1724.33
+RX_PROGRESS iterations=90000 aligned=89992 searching=8 sync_errors=0 losses=0 blocks=4055 errors=589 window_blocks=500 window_errors=59 snr_db=5.07 cfo_hz=1689.05
+RX_PROGRESS iterations=100000 aligned=99992 searching=8 sync_errors=0 losses=0 blocks=4533 errors=770 window_blocks=478 window_errors=181 snr_db=5.31 cfo_hz=1941.95
+RX_PROGRESS iterations=110000 aligned=109992 searching=8 sync_errors=0 losses=0 blocks=5028 errors=830 window_blocks=495 window_errors=60 snr_db=5.51 cfo_hz=2307.26
+RX_PROGRESS iterations=120000 aligned=119992 searching=8 sync_errors=0 losses=0 blocks=5329 errors=975 window_blocks=301 window_errors=145 snr_db=4.37 cfo_hz=1921.57
+RX_DIAGNOSTICS overflow=0 late=0 other=0
+PDSCH_TOTAL blocks=5329 errors=975
+SYNC_TOTAL iterations=120000 aligned=119992 searching=8 errors=0 losses=0 reacquisitions=0
+RX_CONTINUITY samples=1843206368 gap_events=0 missing_samples=0 overlap_samples=0 rate=15360000

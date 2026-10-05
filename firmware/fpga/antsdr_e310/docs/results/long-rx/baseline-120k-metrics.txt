@@ -1,0 +1,4 @@
+Diagnostic lines only; RF power is uncalibrated.
+
+RX_DIAGNOSTICS overflow=0 late=0 other=0
+PDSCH_TOTAL blocks=5494 errors=1665
