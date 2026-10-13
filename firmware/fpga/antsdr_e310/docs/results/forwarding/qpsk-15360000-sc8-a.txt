@@ -1,0 +1,3 @@
+mode=codec pattern=qpsk wire_format=sc8 RF_TX=DAC_mixer_powerdown rate=15360000 tx_samples=46112768 rx_samples=46080000 rx_errors=0 timestamp_gaps=0 tx_async_errors=0 burst_acks=1 first_rx_time=0.5000009111 startup_latency_us=0.9110687598
+qpsk_delay_samples=61 preamble_correlation=1 checked_bits=2878400 bit_errors=0 gain=1.004494722 decision_evm=0
+PASS

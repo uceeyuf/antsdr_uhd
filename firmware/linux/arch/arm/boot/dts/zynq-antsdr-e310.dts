@@ -18,6 +18,9 @@
 &gem0 {
     status = "okay";
     phy-mode = "rgmii-id";
+    // Bridged frames to the PL endpoint skip payload cache maintenance.
+    // Must match the FPGA_MAC argument of bridge-bringup.sh.
+    microphase,fastpath-dest-mac = [02 00 e3 10 55 32];
     // Verify address against the board's MDIO scan before deploying this DTB.
     phy-handle = <&phy0>;
     phy0: ethernet-phy@0 {
@@ -38,6 +41,8 @@
         interrupt-parent = <&intc>;
         phy-mode = "gmii";
         status = "okay";
+        // Bridged frames not for a local MAC skip payload cache maintenance.
+        microphase,bridge-fastpath;
         fixed-link { speed = <1000>; full-duplex; };
     };
 };

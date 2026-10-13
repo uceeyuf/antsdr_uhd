@@ -6,6 +6,7 @@
 #define _DEFAULT_SOURCE
 #include <arpa/inet.h>
 #include <errno.h>
+#include <linux/filter.h>
 #include <linux/if_packet.h>
 #include <net/ethernet.h>
 #include <net/if.h>
@@ -15,6 +16,9 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#ifndef PACKET_IGNORE_OUTGOING
+#define PACKET_IGNORE_OUTGOING 23
+#endif
 
 static unsigned get16(const unsigned char *p) { return (p[0]<<8)|p[1]; }
 static void put16(unsigned char *p, unsigned v) { p[0]=v>>8; p[1]=v; }
@@ -80,6 +84,24 @@ int main(int argc,char **argv) {
     if(mac[0]&1) return 2;
     unsigned idx=if_nametoindex(argv[1]); if(!idx) {perror("interface");return 1;}
     int fd=socket(AF_PACKET,SOCK_RAW,htons(ETH_P_ALL)); if(fd<0){perror("socket");return 1;}
+    /* This tap sits on the bridged sample path. Without a kernel filter every
+     * sample frame in both directions is cloned, copied and wakes this process,
+     * which consumed most of a CPU at 15.36 MS/s. Pass only unfragmented IPv4
+     * UDP to port 49100; reply() still validates everything.
+     */
+    struct sock_filter code[]={
+        BPF_STMT(BPF_LD|BPF_H|BPF_ABS,12), BPF_JUMP(BPF_JMP|BPF_JEQ|BPF_K,0x0800,0,7),
+        BPF_STMT(BPF_LD|BPF_B|BPF_ABS,23), BPF_JUMP(BPF_JMP|BPF_JEQ|BPF_K,17,0,5),
+        BPF_STMT(BPF_LD|BPF_H|BPF_ABS,20), BPF_JUMP(BPF_JMP|BPF_JSET|BPF_K,0x3fff,3,0),
+        BPF_STMT(BPF_LDX|BPF_B|BPF_MSH,14), BPF_STMT(BPF_LD|BPF_H|BPF_IND,16),
+        BPF_JUMP(BPF_JMP|BPF_JEQ|BPF_K,49100,1,0),
+        BPF_STMT(BPF_RET|BPF_K,0), BPF_STMT(BPF_RET|BPF_K,0xffff),
+    };
+    struct sock_fprog prog={sizeof(code)/sizeof(code[0]),code};
+    if(setsockopt(fd,SOL_SOCKET,SO_ATTACH_FILTER,&prog,sizeof(prog))<0){perror("SO_ATTACH_FILTER");close(fd);return 1;}
+    /* Linux 4.20+: skip the per-frame clone for frames sent out of this port. */
+    int one=1;
+    if(setsockopt(fd,SOL_PACKET,PACKET_IGNORE_OUTGOING,&one,sizeof(one))<0)perror("PACKET_IGNORE_OUTGOING");
     struct sockaddr_ll addr={0}; addr.sll_family=AF_PACKET;addr.sll_protocol=htons(ETH_P_ALL);addr.sll_ifindex=idx;
     if(bind(fd,(struct sockaddr*)&addr,sizeof(addr))<0){perror("bind");close(fd);return 1;}
     for(;;) {

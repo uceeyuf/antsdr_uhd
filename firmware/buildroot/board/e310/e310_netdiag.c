@@ -14,7 +14,7 @@ static int fd; static struct ifreq req;
 static void query(void *p) { req.ifr_data=p; if(ioctl(fd,SIOCETHTOOL,&req)<0){perror("SIOCETHTOOL");exit(1);} }
 static unsigned number(const char *s) {char *end;unsigned long n=strtoul(s,&end,10);if(!*s||*s=='-'||*end||n>8192){fprintf(stderr,"invalid count\n");exit(2);}return n;}
 int main(int argc,char **argv) {
- if(argc!=3 && argc!=5){fprintf(stderr,"Usage: e310-netdiag {rings|coalesce|stats} INTERFACE [RX TX]\n");return 2;}
+ if(argc<3 || argc>5){fprintf(stderr,"Usage: e310-netdiag {rings|coalesce} INTERFACE [RX TX] | stats INTERFACE | txcsum INTERFACE [on|off]\n");return 2;}
  if(strlen(argv[2])>=IFNAMSIZ)return 2;
  strncpy(req.ifr_name,argv[2],IFNAMSIZ-1);fd=socket(AF_INET,SOCK_DGRAM,0);if(fd<0){perror("socket");return 1;}
  if(!strcmp(argv[1],"rings")) {
@@ -33,6 +33,12 @@ int main(int argc,char **argv) {
   stats->cmd=ETHTOOL_GSTATS;stats->n_stats=n;query(stats);
   for(unsigned i=0;i<n;i++)printf("%.*s %llu\n",ETH_GSTRING_LEN,names->data+i*ETH_GSTRING_LEN,(unsigned long long)stats->data[i]);
   free(names);free(stats);
+ } else if(!strcmp(argv[1],"txcsum") && argc<=4) {
+  /* With TX checksum offload on, macb computes a software FCS for every
+   * forwarded frame (CHECKSUM_NONE); the bridge never offloads anyway. */
+  struct ethtool_value v={.cmd=ETHTOOL_GTXCSUM};
+  if(argc==4){if(strcmp(argv[3],"on")&&strcmp(argv[3],"off"))return 2;v.cmd=ETHTOOL_STXCSUM;v.data=!strcmp(argv[3],"on");query(&v);v.cmd=ETHTOOL_GTXCSUM;}
+  query(&v);printf("tx-checksumming=%s\n",v.data?"on":"off");
  } else return 2;
  close(fd);return 0;
 }

@@ -1,0 +1,2 @@
+ Num received samples: 462740817; Num dropped samples: 0; Num overruns detected: 0; Num sequence errors (Tx): 3; Num underruns detected: 0;
+rx_overruns+3 

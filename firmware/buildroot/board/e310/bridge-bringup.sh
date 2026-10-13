@@ -33,6 +33,16 @@ done
 if ! /sbin/e310_netdiag rings "$phy" 2048 1024; then
     echo 'Warning: GEM ring tuning failed; continuing with existing sizes' >&2
 fi
+# Bridged sample frames arrive without checksum offload state; with GEM TX
+# checksum offload enabled, macb then computes each frame's FCS in software.
+if ! /sbin/e310_netdiag txcsum "$phy" off; then
+    echo 'Warning: GEM TX checksum offload still on; RX throughput is reduced' >&2
+fi
+# Forward each FPGA frame as it arrives. Batches of 24 leave the GEM at line
+# rate, and its DMA then overruns on concurrent host bursts.
+if ! /sbin/e310_netdiag coalesce "$dma" 1 24; then
+    echo 'Warning: PL DMA RX coalescing unchanged; duplex TX may lose packets' >&2
+fi
 brctl addbr br-uhd
 brctl stp br-uhd off
 brctl setfd br-uhd 0

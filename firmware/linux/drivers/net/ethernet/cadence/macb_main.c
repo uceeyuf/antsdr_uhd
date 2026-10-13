@@ -35,6 +35,7 @@
 #include <linux/tcp.h>
 #include <linux/iopoll.h>
 #include <linux/pm_runtime.h>
+#include <net/e310_fastpath.h>
 #include "macb.h"
 
 #define MACB_RX_BUFFER_SIZE	128
@@ -1037,8 +1038,24 @@ static int gem_rx(struct macb_queue *queue, int budget)
 		netdev_vdbg(bp->dev, "gem_rx %u (len %u)\n", entry, len);
 
 		skb_put(skb, len);
-		dma_unmap_single(&bp->pdev->dev, addr,
-				 bp->rx_buffer_size, DMA_FROM_DEVICE);
+		/* A frame for the bridged FPGA endpoint is forwarded without
+		 * the CPU reading its payload: sync only the headers.
+		 */
+		dma_sync_single_for_cpu(&bp->pdev->dev, addr,
+					min_t(size_t, bp->rx_buffer_size,
+					      E310_FASTPATH_HDR),
+					DMA_FROM_DEVICE);
+		if (bp->fastpath && len >= ETH_HLEN &&
+		    ether_addr_equal(skb->data, bp->fastpath_dest)) {
+			dma_unmap_single_attrs(&bp->pdev->dev, addr,
+					       bp->rx_buffer_size,
+					       DMA_FROM_DEVICE,
+					       DMA_ATTR_SKIP_CPU_SYNC);
+			skb->mark = E310_FASTPATH_MARK;
+		} else {
+			dma_unmap_single(&bp->pdev->dev, addr,
+					 bp->rx_buffer_size, DMA_FROM_DEVICE);
+		}
 
 		skb->protocol = eth_type_trans(skb, bp->dev);
 		skb_checksum_none_assert(skb);
@@ -1486,6 +1503,10 @@ static unsigned int macb_tx_map(struct macb *bp,
 	unsigned int f, nr_frags = skb_shinfo(skb)->nr_frags;
 	unsigned int eof = 1, mss_mfs = 0;
 	u32 ctrl, lso_ctrl = 0, seq_ctrl = 0;
+	/* With TX checksum offload, macb_pad_and_fcs() may have written it. */
+	unsigned long attrs = e310_fastpath_tx(skb) &&
+			      !(bp->dev->features & NETIF_F_HW_CSUM) ?
+			      DMA_ATTR_SKIP_CPU_SYNC : 0;
 
 	/* LSO */
 	if (skb_shinfo(skb)->gso_size != 0) {
@@ -1508,9 +1529,9 @@ static unsigned int macb_tx_map(struct macb *bp,
 		entry = macb_tx_ring_wrap(bp, tx_head);
 		tx_skb = &queue->tx_skb[entry];
 
-		mapping = dma_map_single(&bp->pdev->dev,
-					 skb->data + offset,
-					 size, DMA_TO_DEVICE);
+		mapping = dma_map_single_attrs(&bp->pdev->dev,
+					       skb->data + offset,
+					       size, DMA_TO_DEVICE, attrs);
 		if (dma_mapping_error(&bp->pdev->dev, mapping))
 			goto dma_error;
 
@@ -4107,6 +4128,9 @@ static int macb_probe(struct platform_device *pdev)
 
 	bp = netdev_priv(dev);
 	bp->pdev = pdev;
+	bp->fastpath = !of_property_read_u8_array(np,
+				"microphase,fastpath-dest-mac",
+				bp->fastpath_dest, ETH_ALEN);
 	bp->dev = dev;
 	bp->regs = mem;
 	bp->native_io = native_io;

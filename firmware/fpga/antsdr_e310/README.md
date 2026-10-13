@@ -9,6 +9,8 @@ Update (2026-10-05): `sc8` duplex at 15.36 MS/s passed the QPSK check. The resul
 
 Further network tuning: larger GEM descriptor rings made three 15.36 MS/s `sc16` TX-only runs pass. RX/duplex remains limited. The PL statistics register-access bug is fixed. [Measurements and configuration](docs/network-tuning.md).
 
+Update (2026-10-13): 15.36 MS/s `sc16` duplex now passes the QPSK check. The PS bridge was CPU-bound by a packet tap, software FCS, a disabled L2 cache and cache maintenance, and then by the PS GEM DMA under concurrent bursts. A 120-second duplex run had no overflow or underflow and lost 2 TX packets. [Forwarding optimization](docs/forwarding.md).
+
 ## Reference Revisions
 
 * `uceeyuf/antsdr_uhd`: `b5ebd04a5f405ac3102a772e5d1e8f1be21a7dc3`.
@@ -123,6 +125,8 @@ UHD 发现、寄存器回环、AD9361 CODEC 数字回环和 srsRAN RF API 收发
 2026-10-05 更新：15.36 MS/s 的 `sc8` 双向 QPSK 检查通过。下文原有结果如无特别说明均为 `sc16`。检查器新增最后一个可选参数 `sc16|sc8`，默认 `sc16`。新 TX 窗口选项和实测限制见[吞吐定位](docs/2026-10-05-diagnostics.md#cn)。
 
 进一步调参：扩大 GEM 描述符环后，三次 15.36 MS/s `sc16` 仅发测试通过，RX／双向限制仍在；同时修复了 PL 统计寄存器访问异常。[实测与配置](docs/network-tuning.md#cn)。
+
+2026-10-13 更新：15.36 MS/s `sc16` 双向 QPSK 检查已通过。PS bridge 先后受限于抓包套接字、软件 FCS、未启用的 L2 缓存和缓存维护，之后受限于并发突发下的 PS GEM DMA。120 秒双向运行无溢出、无欠载，丢失 2 个 TX 包。[转发优化](docs/forwarding.md#cn)。
 
 ## 固定的参考版本
 

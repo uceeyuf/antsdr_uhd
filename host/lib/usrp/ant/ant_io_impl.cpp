@@ -15,6 +15,7 @@
 #include <functional>
 #include <memory>
 #include <set>
+#include <thread>
 
 using namespace uhd;
 using namespace uhd::usrp;
@@ -244,6 +245,8 @@ void ant_impl::update_tx_samp_rate(const size_t dspno, const double rate)
     my_streamer->set_samp_rate(rate);
     const double adj = _radio_perifs[dspno].duc->get_scaling_adjustment();
     my_streamer->set_scale_factor(adj);
+    if (_radio_perifs[dspno].tx_pace_update)
+        _radio_perifs[dspno].tx_pace_update(rate);
     _codec_mgr->check_bandwidth(rate, "Tx");
 }
 
@@ -703,6 +706,35 @@ tx_streamer::sptr ant_impl::get_tx_stream(const uhd::stream_args_t& args_)
         fc_cache->stream_channel = stream_i;
         fc_cache->device_channel = radio_index;
         fc_cache->async_queue = _async_task_data->async_md;
+        // The original E310's PS GEM cannot receive line-rate bursts while
+        // also sending a full-rate sc16 RX stream: its receive packet buffer
+        // overruns and TX packets are lost. Pace the host instead, at a
+        // multiple of the sample rate (0 disables). Pacing busy-waits, so by
+        // default it only applies from 20 MB/s; overruns appear at 30 MB/s.
+        perif.tx_pace_update = nullptr;
+        if (_antsdr_product == antsdr_product_t::E310) {
+            const bool forced = args.args.has_key("e310_tx_pace");
+            const double pace = args.args.cast<double>("e310_tx_pace", 1.25);
+            if (pace != 0.0 and (pace < 1.05 or pace > 100.0)) {
+                throw uhd::value_error("e310_tx_pace must be 0 or 1.05..100");
+            }
+            if (pace != 0.0) {
+                const double item_bytes =
+                    convert::get_bytes_per_item(args.otw_format);
+                boost::weak_ptr<tx_fc_cache_t> weak_cache = fc_cache;
+                perif.tx_pace_update = [weak_cache, spp, pace, forced, item_bytes](
+                                           const double rate) {
+                    if (auto cache = weak_cache.lock()) {
+                        const bool on = rate > 0.0
+                                        and (forced or rate * item_bytes >= 20e6);
+                        cache->pace_ns =
+                            on ? static_cast<int64_t>(1e9 * spp / (rate * pace)) : 0;
+                    }
+                };
+            }
+        } else if (args.args.has_key("e310_tx_pace")) {
+            throw uhd::value_error("e310_tx_pace requires the original E310");
+        }
 
         const tick_rate_retriever_t get_tick_rate_fn =
             boost::bind(&ant_impl::get_tick_rate, this);
@@ -799,6 +831,32 @@ uhd::transport::managed_send_buffer::sptr ant_impl::_get_tx_buff_with_flowctrl(u
                 fc_cache->seq_queue.pop_with_timed_wait(fc_cache->last_seq_ack, timeout);
         if (not ok)
             return uhd::transport::managed_send_buffer::sptr(); // timeout waiting for flow control
+    }
+
+    const int64_t pace_ns = fc_cache->pace_ns.load(std::memory_order_relaxed);
+    if (pace_ns) {
+        using clock = std::chrono::steady_clock;
+        // Never send back-to-back to catch up: the GEM receive packet
+        // buffer holds under three frames. The pace margin recovers lag.
+        const auto pace = std::chrono::nanoseconds(pace_ns);
+        const auto now  = clock::now();
+        if (fc_cache->next_send < now)
+            fc_cache->next_send = now;
+        const auto deadline =
+            now + std::chrono::duration_cast<clock::duration>(
+                      std::chrono::duration<double>(timeout));
+        if (fc_cache->next_send > deadline)
+            return uhd::transport::managed_send_buffer::sptr();
+        // Sleeping is too coarse for the ~20 us spacing at 15.36 MS/s.
+        while (true) {
+            const auto wait = fc_cache->next_send - clock::now();
+            if (wait <= clock::duration::zero())
+                break;
+            // Leave timer slack (50 us by default) to the final spin.
+            if (wait > std::chrono::microseconds(200))
+                std::this_thread::sleep_for(wait - std::chrono::microseconds(100));
+        }
+        fc_cache->next_send += pace;
     }
 
     managed_send_buffer::sptr buff = xport->get_send_buff(timeout);

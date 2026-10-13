@@ -1154,6 +1154,10 @@ struct macb {
 
 	size_t			rx_buffer_size;
 
+	/* Frames to this unicast MAC are only bridged; see e310_fastpath.h. */
+	u8			fastpath_dest[ETH_ALEN];
+	bool			fastpath;
+
 	unsigned int		rx_ring_size;
 	unsigned int		tx_ring_size;
 

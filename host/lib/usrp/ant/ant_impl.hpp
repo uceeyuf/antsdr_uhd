@@ -36,6 +36,9 @@
 #include "uhdlib/usrp/cores/user_settings_core_3000.hpp"
 #include "uhdlib/usrp/common/pwr_cal_mgr.hpp"
 #include <boost/assign.hpp>
+#include <atomic>
+#include <chrono>
+#include <functional>
 #include <memory>
 #include <mutex>
 #include <unordered_map>
@@ -239,6 +242,8 @@ private:
         tx_dsp_core_3000::sptr duc;
         std::weak_ptr<uhd::rx_streamer> rx_streamer;
         std::weak_ptr<uhd::tx_streamer> tx_streamer;
+        //! Original E310 TX pacing; follows the TX DSP rate.
+        std::function<void(double)> tx_pace_update;
         user_settings_core_3000::sptr user_settings;
         bool ant_rx2;
         std::unordered_map<std::string, uhd::usrp::pwr_cal_mgr::sptr> pwr_mgr;
@@ -378,6 +383,11 @@ private:
         size_t last_seq_ack;
         uhd::transport::bounded_buffer<size_t> seq_queue;
         std::shared_ptr<async_md_type> async_queue;
+        //! Original E310: minimum spacing between TX packets, 0 when off.
+        //! Line-rate host bursts overrun the PS GEM receive DMA while it
+        //! is also sending a full-rate RX stream.
+        std::atomic<int64_t> pace_ns{0};
+        std::chrono::steady_clock::time_point next_send;
     };
 
     struct rx_fc_cache_t

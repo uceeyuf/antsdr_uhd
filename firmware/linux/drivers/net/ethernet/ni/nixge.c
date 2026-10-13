@@ -24,6 +24,7 @@
 #include <linux/device.h>
 #include <linux/string.h>
 #include <linux/workqueue.h>
+#include <net/e310_fastpath.h>
 
 #define TX_BD_NUM		64
 #define RX_BD_NUM		512
@@ -128,7 +129,7 @@
 #define NIXGE_JUMBO_MTU		9000 /* Max MTU of a jumbo Eth. frame */
 
 #define NIXGE_MAX_FRAME_SIZE	 (NIXGE_MTU + NIXGE_HDR_SIZE + NIXGE_TRL_SIZE)
-#define NIXGE_RX_BUF_SIZE	 2048
+#define NIXGE_RX_BUF_SIZE	 ALIGN(NIXGE_MAX_FRAME_SIZE, 64)
 #define NIXGE_MAX_JUMBO_FRAME_SIZE \
 	(NIXGE_JUMBO_MTU + NIXGE_HDR_SIZE + NIXGE_TRL_SIZE)
 
@@ -238,6 +239,9 @@ struct nixge_priv {
 	u32 dma_rx_errors;
 	u32 dma_tx_errors;
 	u32 rx_alloc_fail;
+
+	/* Forward bridged frames without payload cache maintenance. */
+	bool fastpath;
 
 	int is_fixed_link;
 };
@@ -652,6 +656,7 @@ static int nixge_start_xmit(struct sk_buff *skb, struct net_device *ndev)
 	struct nixge_tx_skb *tx_skb;
 	dma_addr_t tail_p, cur_phys;
 	unsigned long flags;
+	unsigned long attrs = e310_fastpath_tx(skb) ? DMA_ATTR_SKIP_CPU_SYNC : 0;
 
 	if (skb_is_nonlinear(skb) && skb_linearize(skb))
 		goto drop;
@@ -666,8 +671,8 @@ static int nixge_start_xmit(struct sk_buff *skb, struct net_device *ndev)
 	cur_p = &priv->tx_bd_v[priv->tx_bd_tail];
 	tx_skb = &priv->tx_skb[priv->tx_bd_tail];
 
-	cur_phys = dma_map_single(ndev->dev.parent, skb->data,
-				  skb->len, DMA_TO_DEVICE);
+	cur_phys = dma_map_single_attrs(ndev->dev.parent, skb->data,
+					skb->len, DMA_TO_DEVICE, attrs);
 	if (dma_mapping_error(ndev->dev.parent, cur_phys))
 		goto drop_unlock;
 	nixge_hw_dma_bd_set_phys(cur_p, cur_phys);
@@ -701,12 +706,36 @@ drop:
 	return NETDEV_TX_OK;
 }
 
+static int nixge_is_port_addr(struct net_device *port, void *frame)
+{
+	return ether_addr_equal(frame, port->dev_addr);
+}
+
+/* A unicast frame that the bridge will not deliver locally. */
+static bool nixge_rx_forwarded(const struct nixge_priv *priv, u8 *frame,
+			       u32 length)
+{
+	struct net_device *master;
+	bool forwarded;
+
+	if (!priv->fastpath || length < ETH_HLEN ||
+	    !is_unicast_ether_addr(frame))
+		return false;
+	rcu_read_lock();
+	master = netdev_master_upper_dev_get_rcu(priv->ndev);
+	forwarded = master && !ether_addr_equal(frame, master->dev_addr) &&
+		    !netdev_walk_all_lower_dev_rcu(master, nixge_is_port_addr,
+						   frame);
+	rcu_read_unlock();
+	return forwarded;
+}
+
 static int nixge_recv(struct net_device *ndev, int budget)
 {
 	struct nixge_priv *priv = netdev_priv(ndev);
 	struct sk_buff *dma_skb, *skb;
 	struct nixge_hw_dma_bd *cur_p;
-	dma_addr_t tail_p = 0, dma_phys;
+	dma_addr_t tail_p = 0, dma_phys, new_phys;
 	u32 status;
 	u32 packets = 0;
 	u32 received = 0;
@@ -726,26 +755,69 @@ static int nixge_recv(struct net_device *ndev, int budget)
 		if (length > NIXGE_RX_BUF_SIZE)
 			length = NIXGE_RX_BUF_SIZE;
 
-		/* Keep a permanently mapped DMA buffer behind every descriptor.
-		 * Copying a normal-size frame is substantially cheaper on Zynq-7000
-		 * than allocating and mapping a 9 KiB replacement for every packet,
-		 * and it prevents descriptor starvation under sustained RX load.
-		 */
 		dma_skb = (struct sk_buff *)(uintptr_t)
 			nixge_hw_dma_bd_get_addr(cur_p, sw_id_offset);
 		dma_phys = nixge_hw_dma_bd_get_addr(cur_p, phys);
+
+		/* Every synced line is an L1 and PL310 maintenance operation.
+		 * The header alone decides whether the frame is bridged out.
+		 */
+		dma_sync_single_for_cpu(ndev->dev.parent, dma_phys,
+					min_t(u32, length, E310_FASTPATH_HDR),
+					DMA_FROM_DEVICE);
+		if (nixge_rx_forwarded(priv, dma_skb->data, length)) {
+			/* Pass the DMA buffer itself on, without touching its
+			 * payload, and give the descriptor a fresh one.
+			 */
+			skb = napi_alloc_skb(&priv->napi, NIXGE_RX_BUF_SIZE);
+			if (skb) {
+				new_phys = dma_map_single(ndev->dev.parent,
+							  skb->data,
+							  NIXGE_RX_BUF_SIZE,
+							  DMA_FROM_DEVICE);
+				if (dma_mapping_error(ndev->dev.parent,
+						      new_phys)) {
+					dev_kfree_skb_any(skb);
+					skb = NULL;
+				}
+			}
+			if (skb) {
+				dma_unmap_single_attrs(ndev->dev.parent, dma_phys,
+						       NIXGE_RX_BUF_SIZE,
+						       DMA_FROM_DEVICE,
+						       DMA_ATTR_SKIP_CPU_SYNC);
+				nixge_hw_dma_bd_set_offset(cur_p,
+							   (uintptr_t)skb);
+				nixge_hw_dma_bd_set_phys(cur_p, new_phys);
+				skb = dma_skb;
+				skb_put(skb, length);
+				skb->mark = E310_FASTPATH_MARK;
+				skb->protocol = eth_type_trans(skb, ndev);
+				skb_checksum_none_assert(skb);
+				netif_receive_skb(skb);
+				size += length;
+				received++;
+				goto rearm_descriptor;
+			}
+			/* Out of buffers: copy the frame instead. */
+		}
+
+		/* Copy local frames and keep the mapped buffer. The CPU only
+		 * reads it, so its lines stay clean and the next sync_for_cpu
+		 * discards them: no invalidation is needed before reuse.
+		 */
 		skb = napi_alloc_skb(&priv->napi, length);
 		if (!skb) {
 			priv->rx_alloc_fail++;
 			ndev->stats.rx_dropped++;
 			goto recycle_buffer;
 		}
-
-		dma_sync_single_for_cpu(ndev->dev.parent, dma_phys,
-					NIXGE_RX_BUF_SIZE, DMA_FROM_DEVICE);
+		if (length > E310_FASTPATH_HDR)
+			dma_sync_single_range_for_cpu(ndev->dev.parent, dma_phys,
+						      E310_FASTPATH_HDR,
+						      length - E310_FASTPATH_HDR,
+						      DMA_FROM_DEVICE);
 		memcpy(skb_put(skb, length), dma_skb->data, length);
-		dma_sync_single_for_device(ndev->dev.parent, dma_phys,
-					   NIXGE_RX_BUF_SIZE, DMA_FROM_DEVICE);
 		skb->protocol = eth_type_trans(skb, ndev);
 		skb_checksum_none_assert(skb);
 		skb->ip_summed = CHECKSUM_NONE;
@@ -1759,7 +1831,7 @@ static int nixge_probe(struct platform_device *pdev)
 	ndev->ethtool_ops = &nixge_ethtool_ops;
 	ndev->watchdog_timeo = msecs_to_jiffies(5000);
 
-	/* The optimized RX path uses one 2 KiB buffer per descriptor. */
+	/* The RX path uses one 1536-byte buffer per descriptor. */
 	ndev->min_mtu = 64;
 	ndev->max_mtu = NIXGE_MTU;
 
@@ -1774,6 +1846,8 @@ static int nixge_probe(struct platform_device *pdev)
 	priv = netdev_priv(ndev);
 	priv->ndev = ndev;
 	priv->dev = &pdev->dev;
+	priv->fastpath = of_property_read_bool(pdev->dev.of_node,
+					       "microphase,bridge-fastpath");
 	spin_lock_init(&priv->tx_lock);
 	atomic_set(&priv->dma_err_pending, 0);
 	INIT_WORK(&priv->dma_err_work, nixge_dma_err_handler);

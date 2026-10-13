@@ -1,0 +1,18 @@
+# /proc/profile (profile=2, HZ=100, both CPUs), 20 s RX-only 15.36 MS/s sc16,
+# kernel with L2 enabled but before the discovery, FCS and fast-path changes.
+total samples 2705
+ 16.60%    449 crc32_le_base
+ 16.34%    442 finish_task_switch
+ 11.24%    304 macb_start_xmit
+  8.13%    220 v7_dma_inv_range
+  5.91%    160 l2c210_inv_range
+  4.95%    134 mmiocpy
+  3.51%     95 arm_copy_to_user
+  3.14%     85 arch_cpu_idle
+  2.96%     80 __wake_up_common_lock
+  2.03%     55 __skb_try_recv_datagram
+  1.37%     37 __softirqentry_text_start
+  1.37%     37 __skb_wait_for_more_packets
+  1.18%     32 __dev_queue_xmit
+  1.00%     27 packet_recvmsg
+  0.89%     24 __schedule
